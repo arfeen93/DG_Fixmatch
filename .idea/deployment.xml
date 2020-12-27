@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="PublishConfigData" serverName="cluster 33" remoteFilesAllowedToDisappearOnAutoupload="false">
+    <serverData>
+      <paths name="cluster 33">
+        <serverdata>
+          <mappings>
+            <mapping deploy="/home/arfeen/papers_code/dom_gen_aaai_2020/dg_mmld-master" local="$PROJECT_DIR$" web="/" />
+          </mappings>
+        </serverdata>
+      </paths>
+    </serverData>
+  </component>
+</project>
