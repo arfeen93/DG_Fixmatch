@@ -38,8 +38,7 @@ if __name__ == '__main__':
     parser.add_argument('--lr', type=float, default=0.001)
     parser.add_argument('--lr-step', type=int, default=24)
     parser.add_argument('--lr-decay-gamma', type=float, default=0.1)
-    parser.add_argument('--momentum', type=float, default=0.92)
-    # parser.add_argument('--momentum', type=float, default=0.9)
+    parser.add_argument('--momentum', type=float, default=0.9)
     parser.add_argument('--weight-decay', type=float, default=5e-4)
     parser.add_argument('--nesterov', action='store_true')
     
@@ -71,9 +70,11 @@ if __name__ == '__main__':
     source_domain, target_domain = split_domain(domain, args.exp_num)
 
     device = torch.device("cuda:" + str(args.gpu) if torch.cuda.is_available() else "cpu")
+    print('device is :', device)
+
     get_domain_label, get_cluster = train_to_get_label(args.train, args.clustering)
 
-    # print('clustering :', args.clustering)
+    print('alpha_mixup is :', args.alpha_mixup)
     # print('get_domain_label :', get_domain_label)
     # print('get_cluster :', get_cluster)
 
@@ -110,6 +111,10 @@ if __name__ == '__main__':
     elif args.scheduler == 'step':
         schedulers = [get_scheduler(args.scheduler)(optimizer=opt, step_size=lr_step, gamma=args.lr_decay_gamma)
                      for opt in optimizers]
+    elif args.scheduler == 'multistep':
+        scheduler = [get_scheduler(args.scheduler)(optimizer=opt, milestones =[20, 30, 45], gamma=args.lr_decay_gamma)
+                     for opt in optimizers]
+        print('multistep scheduler is used')
     else:
         raise ValueError('Name of scheduler unknown %s' %args.scheduler)
             

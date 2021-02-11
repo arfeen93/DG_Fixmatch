@@ -1,6 +1,7 @@
 from torch import nn
 import torch
 
+
 def eval_model(model, eval_data, device, epoch, filename):
     criterion = nn.CrossEntropyLoss()
     model.eval()  # Set model to training mode
@@ -28,4 +29,5 @@ def eval_model(model, eval_data, device, epoch, filename):
     print(log)
     with open(filename, 'a') as f: 
         f.write(log + '\n')
+    # tb1.close()
     return epoch_acc

@@ -7,6 +7,9 @@
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
     <option name="LAST_RESOLUTION" value="IGNORE" />
   </component>
+  <component name="Git.Settings">
+    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
+  </component>
   <component name="JupyterTrust" id="532f4f29-671a-49d3-8c9a-d23156d4a15d" />
   <component name="ProjectId" id="1mFDxXpjqpcoOqkQkpW8Csgnl1z" />
   <component name="ProjectViewState">
@@ -15,7 +18,12 @@
   </component>
   <component name="PropertiesComponent">
     <property name="RunOnceActivity.OpenProjectViewOnStart" value="true" />
-    <property name="WebServerToolWindowFactoryState" value="false" />
+    <property name="WebServerToolWindowFactoryState" value="true" />
+    <property name="WebServerToolWindowPanel.toolwindow.highlight.mappings" value="true" />
+    <property name="WebServerToolWindowPanel.toolwindow.highlight.symlinks" value="true" />
+    <property name="WebServerToolWindowPanel.toolwindow.show.date" value="false" />
+    <property name="WebServerToolWindowPanel.toolwindow.show.permissions" value="false" />
+    <property name="WebServerToolWindowPanel.toolwindow.show.size" value="false" />
     <property name="last_opened_file_path" value="$PROJECT_DIR$" />
   </component>
   <component name="RunManager">
@@ -51,6 +59,12 @@
       <option name="presentableId" value="Default" />
       <updated>1609080691687</updated>
       <workItem from="1609080692707" duration="63000" />
+      <workItem from="1610951376424" duration="890000" />
+      <workItem from="1610959456587" duration="73750000" />
+      <workItem from="1611924039356" duration="8518000" />
+      <workItem from="1611946286467" duration="27644000" />
+      <workItem from="1612248373727" duration="32763000" />
+      <workItem from="1612771726313" duration="39102000" />
     </task>
     <servers />
   </component>
@@ -58,14 +72,18 @@
     <option name="version" value="3" />
   </component>
   <component name="WindowStateProjectService">
-    <state x="361" y="71" key="#Deployment" timestamp="1609080755316">
+    <state x="361" y="71" key="#Deployment" timestamp="1610951409814">
       <screen x="0" y="0" width="1536" height="824" />
     </state>
-    <state x="361" y="71" key="#Deployment/0.0.1536.824@0.0.1536.824" timestamp="1609080755316" />
+    <state x="361" y="71" key="#Deployment/0.0.1536.824@0.0.1536.824" timestamp="1610951409814" />
     <state x="345" y="58" key="#SSH_Configurations" timestamp="1609080719375">
       <screen x="0" y="0" width="1536" height="824" />
     </state>
     <state x="345" y="58" key="#SSH_Configurations/0.0.1536.824@0.0.1536.824" timestamp="1609080719375" />
+    <state x="486" y="214" key="#com.intellij.fileTypes.FileTypeChooser" timestamp="1610960699184">
+      <screen x="0" y="0" width="1536" height="824" />
+    </state>
+    <state x="486" y="214" key="#com.intellij.fileTypes.FileTypeChooser/0.0.1536.824@0.0.1536.824" timestamp="1610960699184" />
     <state x="549" y="167" key="FileChooserDialogImpl" timestamp="1609080753785">
       <screen x="0" y="0" width="1536" height="824" />
     </state>

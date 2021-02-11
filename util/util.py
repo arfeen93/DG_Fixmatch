@@ -1,6 +1,6 @@
 from model import alexnet, caffenet
 from torch import nn, optim
-from torch.optim.lr_scheduler import StepLR, ExponentialLR
+from torch.optim.lr_scheduler import StepLR, ExponentialLR, MultiStepLR
 from sklearn.manifold import TSNE
 import matplotlib.pyplot as plt
 import numpy as np
@@ -111,19 +111,22 @@ def get_optimizer(model, init_lr, momentum, weight_decay, feature_fixed=False, n
             optimizer = optim.SGD(
                 [{'params': model_.parameters(), 'lr': init_lr*alpha} for model_, alpha in model],
                 lr=init_lr, momentum=momentum, weight_decay=weight_decay, nesterov=nesterov)
-                                   
+            # optimizer = optim.Adam([{'params': model_.parameters(), 'lr': init_lr*alpha} for model_, alpha in model],
+            #                         lr=init_lr, betas=(0.9, 0.999), eps=1e-8, weight_decay=weight_decay)
         else:
             params_to_update = model.parameters()
             optimizer = optim.SGD(
-                params_to_update, lr=init_lr, momentum=momentum, 
+                params_to_update, lr=init_lr, momentum=momentum,
                 weight_decay=weight_decay, nesterov=nesterov)
+            # optimizer = optim.Adam(params_to_update, lr=init_lr, betas=(0.9, 0.999), eps=1e-8, weight_decay=weight_decay)
     
     return optimizer
 
 schedulers_map = {
     'step': StepLR,
     'exponential': ExponentialLR,
-    'inv': inv_lr_scheduler
+    'inv': inv_lr_scheduler,
+    'multistep': MultiStepLR
 }
 
 def get_scheduler(name):
