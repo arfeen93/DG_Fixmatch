@@ -7,11 +7,19 @@
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
     <option name="LAST_RESOLUTION" value="IGNORE" />
   </component>
+  <component name="FileTemplateManagerImpl">
+    <option name="RECENT_TEMPLATES">
+      <list>
+        <option value="Python Script" />
+      </list>
+    </option>
+  </component>
   <component name="Git.Settings">
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
   </component>
   <component name="JupyterTrust" id="532f4f29-671a-49d3-8c9a-d23156d4a15d" />
   <component name="ProjectId" id="1mFDxXpjqpcoOqkQkpW8Csgnl1z" />
+  <component name="ProjectLevelVcsManager" settingsEditedManually="true" />
   <component name="ProjectViewState">
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
@@ -24,7 +32,9 @@
     <property name="WebServerToolWindowPanel.toolwindow.show.date" value="false" />
     <property name="WebServerToolWindowPanel.toolwindow.show.permissions" value="false" />
     <property name="WebServerToolWindowPanel.toolwindow.show.size" value="false" />
-    <property name="last_opened_file_path" value="$PROJECT_DIR$" />
+    <property name="last_opened_file_path" value="$PROJECT_DIR$/../../pythonProject1/dg_mmld" />
+    <property name="run.code.analysis.last.selected.profile" value="aDefault" />
+    <property name="settings.editor.selected.configurable" value="Errors" />
   </component>
   <component name="RunManager">
     <configuration name="main" type="PythonConfigurationType" factoryName="Python" nameIsGenerated="true">
@@ -64,7 +74,21 @@
       <workItem from="1611924039356" duration="8518000" />
       <workItem from="1611946286467" duration="27644000" />
       <workItem from="1612248373727" duration="32763000" />
-      <workItem from="1612771726313" duration="39102000" />
+      <workItem from="1612771726313" duration="43715000" />
+      <workItem from="1613090689640" duration="28056000" />
+      <workItem from="1613154649056" duration="594000" />
+      <workItem from="1613269745810" duration="55878000" />
+      <workItem from="1614325470339" duration="716000" />
+      <workItem from="1615890418567" duration="1282000" />
+      <workItem from="1615981736630" duration="604000" />
+      <workItem from="1616403666065" duration="612000" />
+      <workItem from="1617015126222" duration="3150000" />
+      <workItem from="1617025088803" duration="28479000" />
+      <workItem from="1617303536892" duration="49404000" />
+      <workItem from="1617527116958" duration="14928000" />
+      <workItem from="1617580532165" duration="65342000" />
+      <workItem from="1618057725680" duration="30403000" />
+      <workItem from="1618212017423" duration="16357000" />
     </task>
     <servers />
   </component>
@@ -72,10 +96,14 @@
     <option name="version" value="3" />
   </component>
   <component name="WindowStateProjectService">
-    <state x="361" y="71" key="#Deployment" timestamp="1610951409814">
+    <state x="361" y="71" key="#Deployment" timestamp="1617630687885">
       <screen x="0" y="0" width="1536" height="824" />
     </state>
-    <state x="361" y="71" key="#Deployment/0.0.1536.824@0.0.1536.824" timestamp="1610951409814" />
+    <state x="361" y="71" key="#Deployment/0.0.1536.824@0.0.1536.824" timestamp="1617630687885" />
+    <state x="444" y="94" key="#Options" timestamp="1617630695832">
+      <screen x="0" y="0" width="1536" height="824" />
+    </state>
+    <state x="444" y="94" key="#Options/0.0.1536.824@0.0.1536.824" timestamp="1617630695832" />
     <state x="345" y="58" key="#SSH_Configurations" timestamp="1609080719375">
       <screen x="0" y="0" width="1536" height="824" />
     </state>
@@ -84,13 +112,25 @@
       <screen x="0" y="0" width="1536" height="824" />
     </state>
     <state x="486" y="214" key="#com.intellij.fileTypes.FileTypeChooser/0.0.1536.824@0.0.1536.824" timestamp="1610960699184" />
-    <state x="549" y="167" key="FileChooserDialogImpl" timestamp="1609080753785">
+    <state x="528" y="282" key="ANALYSIS_DLG_com.intellij.analysis.BaseAnalysisAction$1" timestamp="1617188012981">
       <screen x="0" y="0" width="1536" height="824" />
     </state>
-    <state x="549" y="167" key="FileChooserDialogImpl/0.0.1536.824@0.0.1536.824" timestamp="1609080753785" />
+    <state x="528" y="282" key="ANALYSIS_DLG_com.intellij.analysis.BaseAnalysisAction$1/0.0.1536.824@0.0.1536.824" timestamp="1617188012981" />
+    <state x="549" y="167" key="FileChooserDialogImpl" timestamp="1617894765876">
+      <screen x="0" y="0" width="1536" height="824" />
+    </state>
+    <state x="549" y="167" key="FileChooserDialogImpl/0.0.1536.824@0.0.1536.824" timestamp="1617894765876" />
+    <state x="277" y="57" key="SettingsEditor" timestamp="1617188339997">
+      <screen x="0" y="0" width="1536" height="824" />
+    </state>
+    <state x="277" y="57" key="SettingsEditor/0.0.1536.824@0.0.1536.824" timestamp="1617188339997" />
     <state x="654" y="143" width="344" height="538" key="ftp.server.browser" timestamp="1609080746366">
       <screen x="0" y="0" width="1536" height="824" />
     </state>
     <state x="654" y="143" width="344" height="538" key="ftp.server.browser/0.0.1536.824@0.0.1536.824" timestamp="1609080746366" />
+    <state x="431" y="145" width="672" height="678" key="search.everywhere.popup" timestamp="1617541621458">
+      <screen x="0" y="0" width="1536" height="824" />
+    </state>
+    <state x="431" y="145" width="672" height="678" key="search.everywhere.popup/0.0.1536.824@0.0.1536.824" timestamp="1617541621458" />
   </component>
 </project>

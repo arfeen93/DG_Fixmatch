@@ -40,6 +40,7 @@ def random_split_dataloader (data, data_root, source_domain, target_domain, batc
    
     # source_train = deepcopy(source_train)
     source_lbl_train = deepcopy(source_lbl_train)
+    source_lbl_train_eval = deepcopy(source_lbl_train)
     source_unlbl_train = deepcopy(source_unlbl_train)
     # print('source_lbl_train without augmentation :', list(source_lbl_train)[0])
     source_val = source_unlbl_val
@@ -65,8 +66,7 @@ def random_split_dataloader (data, data_root, source_domain, target_domain, batc
     source_lbl_train.get_domain_label = get_domain_label
     # source_lbl_train.dataset.get_cluster=get_cluster
     source_lbl_train.get_cluster = get_cluster
-
-    
+    source_lbl_train_eval.set_transform("val")
     # print('source_lbl_train with augmentation :', list(source_lbl_train)[0])
     # print('source_lbl_train data :',list(source_lbl_train)[0][0][0])
     # source_train, source_val = random_split(source, [int(len(source)*split_rate), len(source)-int(len(source)*split_rate)])
@@ -84,28 +84,31 @@ def random_split_dataloader (data, data_root, source_domain, target_domain, batc
     source_lbl_train_ldr = DataLoader(source_lbl_train, batch_size=batch_size, shuffle=True, num_workers=num_workers)
     
     # Debugging for augmentation
-    for images, trgt_lbl, dom_lbl in source_lbl_train:
-        img = images[2]
-        fig, ax = plt.subplots(figsize=(12,12))
-        ax.set_xticks([]); ax.set_yticks([])
-        save_image(make_grid(img[:128], nrow=16), "lbld_data.png")
-        break
+    # for images, trgt_lbl, dom_lbl in source_lbl_train:
+    #     img = images[2]
+    #     fig, ax = plt.subplots(figsize=(12,12))
+    #     ax.set_xticks([]); ax.set_yticks([])
+    #     save_image(make_grid(img[:128], nrow=16), "lbld_data.png")
+    #     break
         
     source_unlbl_train_ldr = DataLoader(source_unlbl_train, batch_size=batch_size, shuffle=True, num_workers=num_workers)
-
-    for images, trgt_lbl, pseudo_dom_lbl in source_unlbl_train:
-        img_w = images[0]
-        fig,ax = plt.subplots(figsize=(12,12))
-        ax.set_xticks([]); ax.set_yticks([])
-        save_image(make_grid(img_w[:128], nrow=16), "unlbld_data_weak_aug.png")
-        break
-    for images, trgt_lbl, pseudo_dom_lbl in source_unlbl_train:
-        img_s = images[1]
-        fig,ax = plt.subplots(figsize=(12,12))
-        ax.set_xticks([]); ax.set_yticks([])
-        save_image(make_grid(img_s[:128], nrow=16), "unlbld_data_strong_aug.png")
-        break
+    #print("source_unlbl_train_ldr is:",(list(source_unlbl_train_ldr)[0]))
+    # for images, trgt_lbl, pseudo_dom_lbl in source_unlbl_train:
+    #     img_w = images[0]
+    #     fig,ax = plt.subplots(figsize=(12,12))
+    #     ax.set_xticks([]); ax.set_yticks([])
+    #     save_image(make_grid(img_w[:128], nrow=16), "unlbld_data_weak_aug.png")
+    #     break
+    # for images, trgt_lbl, pseudo_dom_lbl in source_unlbl_train:
+    #     img_s = images[1]
+    #     fig,ax = plt.subplots(figsize=(12,12))
+    #     ax.set_xticks([]); ax.set_yticks([])
+    #     save_image(make_grid(img_s[:128], nrow=16), "unlbld_data_strong_aug.png")
+    #     break
     source_val  = DataLoader(source_val, batch_size=batch_size, shuffle=False, num_workers=num_workers)
     target_test = DataLoader(target_test, batch_size=batch_size, shuffle=False, num_workers=num_workers)
-    return source_lbl_train_ldr, source_unlbl_train_ldr, source_val, target_test, source_lbl_train
+
+
+
+    return source_lbl_train_ldr, source_unlbl_train_ldr, source_val, target_test, source_lbl_train, source_lbl_train_eval
     # return source_train, source_val, target_test, source_lbl_train

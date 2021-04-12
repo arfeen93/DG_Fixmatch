@@ -7,7 +7,7 @@ import numpy as np
 import torch
 from copy import deepcopy
 from torch.nn import init
-from model import caffenet, alexnet, resnet
+from model import caffenet, alexnet, resnet, purity_predictor
 from dataloader.dataloader import *
 from clustering.domain_split import calc_mean_std
 from sklearn.decomposition import PCA
@@ -73,7 +73,7 @@ def get_model(name, train):
 
     return get_network_fn
 
-def get_model_lr(name, train, model, fc_weight=1.0, disc_weight=1.0):
+def get_model_lr(name, train, model, reg_model, fc_weight=1.0, disc_weight=1.0):
     if name not in nets_map:
         raise ValueError('Name of network unknown %s' % name)
     if train not in train_map:
@@ -89,16 +89,19 @@ def get_model_lr(name, train, model, fc_weight=1.0, disc_weight=1.0):
     
     elif name == 'alexnet' and train == 'general':
         return [(model.base_model.features, 1.0),  (model.feature_layers, 1.0),
-            (model.fc, 1.0 * fc_weight), (model.discriminator, 1.0 * disc_weight)]
+            (model.fc, 1.0 * fc_weight), (model.discriminator, 1.0 * disc_weight), (reg_model.reg_features, 1.0),
+                (reg_model.regressor, 1.0)]
     elif name == 'caffenet' and train == 'general':
         return [(model.base_model.features, 1.0),  (model.base_model.classifier, 1.0),
-            (model.base_model.class_classifier, 1.0 * fc_weight), (model.discriminator, 1.0 * disc_weight)]
+            (model.base_model.class_classifier, 1.0 * fc_weight), (model.discriminator, 1.0 * disc_weight),
+                (reg_model.reg_features, 1.0), (reg_model.regressor, 0.10)]
     elif name == 'resnet' and train == 'general':
         return [(model.base_model.conv1, 1.0), (model.base_model.bn1, 1.0), (model.base_model.layer1, 1.0), 
                 (model.base_model.layer2, 1.0), (model.base_model.layer3, 1.0), (model.base_model.layer4, 1.0), 
-                (model.base_model.fc, 1.0 * fc_weight), (model.discriminator, 1.0 * disc_weight)]
+                (model.base_model.fc, 1.0 * fc_weight), (model.discriminator, 1.0 * disc_weight),
+                (reg_model.reg_features, 1.0), (reg_model.regressor, 1.0)]
 
-def get_optimizer(model, init_lr, momentum, weight_decay, feature_fixed=False, nesterov=False, per_layer=False):
+def get_optimizer( model, init_lr, momentum, weight_decay, feature_fixed=False, nesterov=False, per_layer=False):
     if feature_fixed:
         params_to_update = []
         for name, param in model.named_parameters():

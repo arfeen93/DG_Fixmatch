@@ -35,7 +35,7 @@ class AlexNetCaffe(nn.Module):
         self.classifier = nn.Sequential(OrderedDict([
             ("fc6", nn.Linear(256 * 6 * 6, 4096)),
             ("relu6", nn.ReLU(inplace=True)),
-            ("drop6", nn.Dropout() if dropout else Id()),
+            ("drop6", nn.Dropout()if dropout else Id()),
             ("fc7", nn.Linear(4096, 4096)),
             ("relu7", nn.ReLU(inplace=True)),
             ("drop7", nn.Dropout() if dropout else Id())]))
@@ -47,6 +47,7 @@ class AlexNetCaffe(nn.Module):
         #57.6 is the magic number needed to bring torch data back to the range of caffe data, based on used std
         x = x.view(x.size(0), -1)
         x = self.classifier(x)
+
         return self.class_classifier(x)
 
 def caffenet(num_classes, num_domains=None, pretrained=True):
@@ -71,8 +72,8 @@ class DGcaffenet(nn.Module):
         self.discriminator = Discriminator([4096, 1024, 1024, num_domains], grl=grl, reverse=True)
         
     def forward(self, x):
-        #print('x in caffenet.py :', x)
         x = self.base_model.features(x*57.6)
+        #rint("x size is:", x.size())
         x = x.view(x.size(0), 256 * 6 * 6)
         x = self.base_model.classifier(x)
         output_class = self.base_model.class_classifier(x)
@@ -106,3 +107,9 @@ class DGcaffenet(nn.Module):
                 x = model(x)
                 break
         return x.view(x.size(0), -1)
+
+
+
+
+
+

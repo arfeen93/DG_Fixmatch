@@ -9,6 +9,7 @@ from util.util import *
 from train.eval import *
 from clustering.domain_split import domain_split
 from dataloader.dataloader import random_split_dataloader
+from model.purity_predictor import *
 
 if __name__ == '__main__':
     
@@ -34,13 +35,17 @@ if __name__ == '__main__':
     parser.add_argument('--save-step', type=int, default=100)
     
     parser.add_argument('--batch-size', type=int, default=128)
+    #parser.add_argument('--batch-size', type=int, default=16)
+
     parser.add_argument('--scheduler', default='step')
     parser.add_argument('--lr', type=float, default=0.001)
     parser.add_argument('--lr-step', type=int, default=24)
     parser.add_argument('--lr-decay-gamma', type=float, default=0.1)
     parser.add_argument('--momentum', type=float, default=0.9)
+
     parser.add_argument('--weight-decay', type=float, default=5e-4)
     parser.add_argument('--nesterov', action='store_true')
+                        # default=True,help='use nesterov momentum')
     
     parser.add_argument('--fc-weight', type=float, default=1.0)
     parser.add_argument('--disc-weight', type=float, default=1.0)
@@ -71,14 +76,17 @@ if __name__ == '__main__':
 
     device = torch.device("cuda:" + str(args.gpu) if torch.cuda.is_available() else "cpu")
     print('device is :', device)
+    print("no of epoch:", args.num_epoch)
 
     get_domain_label, get_cluster = train_to_get_label(args.train, args.clustering)
 
     print('alpha_mixup is :', args.alpha_mixup)
+    print("lr is:", args.lr)
     # print('get_domain_label :', get_domain_label)
     # print('get_cluster :', get_cluster)
 
-    source_lbl_train_ldr, source_unlbl_train_ldr, source_val,  target_test, source_lbl_train = random_split_dataloader(
+    source_lbl_train_ldr, source_unlbl_train_ldr, source_val,  target_test, source_lbl_train, source_lbl_train_eval\
+        = random_split_dataloader(
         data=args.data, data_root=args.data_root, source_domain=source_domain, target_domain=target_domain,
         batch_size=args.batch_size, get_domain_label=get_domain_label, get_cluster=get_cluster, num_workers=4,
         color_jitter=args.color_jitter, min_scale=args.min_scale)
@@ -101,9 +109,15 @@ if __name__ == '__main__':
         num_classes=source_lbl_train_ldr.dataset.num_class, num_domains=disc_dim, pretrained=True)
     
     model = model.to(device)
-    model_lr = get_model_lr(args.model, args.train, model, fc_weight=args.fc_weight, disc_weight=args.disc_weight)
-    optimizers = [get_optimizer(model_part, args.lr * alpha, args.momentum, args.weight_decay,
+    reg_model = Purity()
+    reg_model = reg_model.to(device)
+    #print('model is :', model)
+    model_lr = get_model_lr(args.model, args.train, model, reg_model,  fc_weight=args.fc_weight, disc_weight=args.disc_weight)
+    #print("model lr:", model_lr)
+    optimizers = [get_optimizer( model_part, args.lr * alpha, args.momentum, args.weight_decay,
                                 args.feature_fixed, args.nesterov, per_layer=False) for model_part, alpha in model_lr]
+    #print("optimizers:", optimizers)
+
 
     if args.scheduler == 'inv':
         schedulers = [get_scheduler(args.scheduler)(optimizer=opt, alpha=10, beta=0.75, total_epoch=num_epoch)
@@ -121,6 +135,13 @@ if __name__ == '__main__':
     best_acc = 0.0
     test_acc = 0.0
     best_epoch = 0
+
+    # if args.alpha_mixup > 0:
+    #     lam = np.random.beta(args.alpha_mixup, args.alpha_mixup)
+    # else:
+    #     lam = 1
+    #
+    # index = torch.randperm(args.batch_size)
     
     for epoch in range(num_epoch):
 
@@ -172,15 +193,15 @@ if __name__ == '__main__':
         # print('weight :', weight)
         # print('unlbl_weight :', unlbl_weight)
         model, optimizers = get_train(args.train)(
-            model=model, source_lbl_train_ldr=source_lbl_train_ldr, source_unlbl_train_ldr=source_unlbl_train_ldr,
+            model=model,reg_model = reg_model, source_lbl_train_ldr=source_lbl_train_ldr, source_unlbl_train_ldr=source_unlbl_train_ldr,
             source_lbl_train=source_lbl_train, optimizers=optimizers, device=device, epoch=epoch, num_epoch=num_epoch,
             filename=path+'/source_train.txt', entropy=args.entropy, disc_weight=weight, entropy_weight=args.entropy_weight,
-            grl_weight=args.grl_weight, alpha_mixup=args.alpha_mixup)
+            grl_weight=args.grl_weight, index=index)
 
         if epoch % args.eval_step == 0:
-            acc = eval_model(model, source_val, device, epoch, path+'/source_eval.txt')
-            acc_ = eval_model(model, target_test, device, epoch, path+'/target_test.txt')
-            
+            acc = eval_model(model, reg_model, source_val, source_lbl_train_eval, device, epoch, path+'/source_eval.txt')
+            acc_ = eval_model(model, reg_model, target_test, source_lbl_train_eval, device, epoch, path+'/target_test.txt')
+
         if epoch % args.save_step == 0:
             torch.save(model.state_dict(), os.path.join(
                 path, 'models',
@@ -193,14 +214,14 @@ if __name__ == '__main__':
             torch.save(model.state_dict(), os.path.join(
                 path, 'models',
                 "model_best.pt"))
-                
+
         for scheduler in schedulers:
             scheduler.step()
-            
+
     best_model = get_model(args.model, args.train)(num_classes=source_lbl_train_ldr.dataset.num_class, num_domains=disc_dim, pretrained=False)
     best_model.load_state_dict(torch.load(os.path.join(
                 path, 'models',
                 "model_best.pt"), map_location=device))
     best_model = best_model.to(device)
-    test_acc = eval_model(best_model, target_test, device, best_epoch, path+'/target_best.txt')
+    test_acc = eval_model(best_model, reg_model, target_test, source_lbl_train_eval, device, best_epoch, path+'/target_best.txt')
     print('Test Accuracy by the best model on the source domain is {} (at Epoch {})'.format(test_acc, best_epoch))

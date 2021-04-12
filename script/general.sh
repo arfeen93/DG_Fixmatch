@@ -2,22 +2,24 @@
 
 domain=("photo" "art" "cartoon" "sketch")
 
-times=5
+times=1
 for i in `seq 1 $times`
 do
   max=$((${#domain[@]}-1))
   #for j in `seq 0 $max`
   #do
-    for lr_step in 25
+    for lr_step in 15
     do
       for epoch_num in 50
       do
         for alpha_mix in 0.3
+
         do
 
-          dir_name="PACS/default/${domain[2]}${i}"
+          dir_name="PACS/default/${domain[3]}${i}"
           echo $dir_name
-          CUDA_VISIBLE_DEVICES=1 python ../main/main.py \
+          #CUDA_VISIBLE_DEVICES=1 python ../main/main.py \
+          python ../main/main.py \
             --data-root='/home/arfeen/papers_code/dom_gen_aaai_2020/PACS/kfold/' \
             --save-root='/home/arfeen/papers_code/dom_gen_aaai_2020/' \
             --result-dir=$dir_name \
@@ -29,7 +31,7 @@ do
             --num-clustering=3 \
             --clustering-step=1 \
             --entropy='default' \
-            --exp-num=2 \
+            --exp-num=3 \
             --gpu=0 \
             --num-epoch=$epoch_num \
             --scheduler='step' \

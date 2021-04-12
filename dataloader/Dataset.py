@@ -17,7 +17,8 @@ class TransformFix(object):
             self.crop_size = 227
         else:
             self.crop_size = 224
-        
+            #self.crop_size = 227
+        #print("crop size is:", self.crop_size)
         # Might want to add resize image as done in other transforms
         self.weak = transforms.Compose([
            # self.resize(256,256),
