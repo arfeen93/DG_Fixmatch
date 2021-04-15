@@ -195,8 +195,8 @@ if __name__ == '__main__':
         model, optimizers = get_train(args.train)(
             model=model,reg_model = reg_model, source_lbl_train_ldr=source_lbl_train_ldr, source_unlbl_train_ldr=source_unlbl_train_ldr,
             source_lbl_train=source_lbl_train, optimizers=optimizers, device=device, epoch=epoch, num_epoch=num_epoch,
-            filename=path+'/source_train.txt', entropy=args.entropy, disc_weight=weight, entropy_weight=args.entropy_weight,
-            grl_weight=args.grl_weight, index=index)
+            filename=path+'/source_train.txt', entropy=args.entropy, alpha_mixup=args.alpha_mixup, disc_weight=weight, entropy_weight=args.entropy_weight,
+            grl_weight=args.grl_weight)
 
         if epoch % args.eval_step == 0:
             acc = eval_model(model, reg_model, source_val, source_lbl_train_eval, device, epoch, path+'/source_eval.txt')

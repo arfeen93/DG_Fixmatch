@@ -8,7 +8,8 @@ do
   max=$((${#domain[@]}-1))
   #for j in `seq 0 $max`
   #do
-    for lr_step in 15
+    #for lr_step in 15
+    for lr_step in 5
     do
       for epoch_num in 50
       do
@@ -35,9 +36,9 @@ do
             --gpu=0 \
             --num-epoch=$epoch_num \
             --scheduler='step' \
-            --lr=0.0001 \
+            --lr=0.001 \
             --lr-step=$lr_step \
-            --lr-decay-gamma=0.1 \
+            --lr-decay-gamma=0.5 \
             --nesterov \
             --fc-weight=10.0 \
             --disc-weight=10.0 \
