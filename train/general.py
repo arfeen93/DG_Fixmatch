@@ -65,7 +65,7 @@ def train(model, reg_model, source_lbl_train_ldr, source_unlbl_train_ldr, source
 
         input_x, target_x, lbl_dataldr_domain_lbl = next(labeled_iter)
 
-        #     print("label data finished")
+        #print("label data cls_lbl finished:", target_x)
         lbl_input = input_x[2]
         labels = target_x
         lbld_domains = lbl_dataldr_domain_lbl
@@ -105,11 +105,11 @@ def train(model, reg_model, source_lbl_train_ldr, source_unlbl_train_ldr, source
         #         count += 1
         # print('count of true mask_loss :', count)
         pseudo_labels_orig = pred_weak_aug.max(axis=1)[1]
-        #print('pseudo_labels_orig are :', pseudo_labels_orig)
-        s = torch.sum(pseudo_labels_orig==input_lbl)
-        if batch_idx==0:
-            print("no of elements same in pseudo and orig is:", s)
         pseudo_labels = F.one_hot(pseudo_labels_orig, num_classes=7)
+        #print('pseudo_labels_orig are :', pseudo_labels_orig)
+        #s = torch.sum(pseudo_labels_orig==input_lbl)
+        # if batch_idx==0:
+        #     print("no of elements same in pseudo and orig is:", s)
 
 
         #lam = lam.to(device)
@@ -124,12 +124,16 @@ def train(model, reg_model, source_lbl_train_ldr, source_unlbl_train_ldr, source
         #print("lambda for mixup:", lam)
         #lbl_dom = lbl_dom.to(device)
         #unlbl_dom = unlbl_dom.to(device)
-        #mixedup = mixedup.to(device)
+        mixedup = mixedup.to(device)
+
         "Unlabelled data model output---start"
         mixedup_output, mixup_output_domain = model(mixedup)
         "Unlabelled data model output---end"
         #x1 = model.features(mixedup)
-        lambda_pred = reg_model(mixedup)
+        "Novelty Regressor model data passing--start"
+        mixup_unlbl_str_dlr_cat = torch.cat((mixedup, input_strong), 1)
+        lambda_pred = reg_model(mixup_unlbl_str_dlr_cat)
+        "Novelty Regressor model data passing--end"
         prob_mixup_output = F.softmax(mixedup_output, dim=1)
 
 
@@ -146,23 +150,22 @@ def train(model, reg_model, source_lbl_train_ldr, source_unlbl_train_ldr, source
         #print("input class lbl:", input_clss_lbl)
         #print("input class lbl idx:", input_clss_lbl_idx)
         # "Novelty regressor part---start"
-        # lamdba_gt = [1 if input_clss_lbl[k]==input_clss_lbl_idx[k] else lam for k in range(len(input_clss_lbl))]
-        #
-        # lamdba_gt = torch.Tensor(lamdba_gt)
-        # #print("lambda_gt is:", lamdba_gt)
-        # lamdba_gt = lamdba_gt.reshape(lamdba_gt.shape[0], 1)
-        # lamdba_gt = lamdba_gt.to(device)
-        # abs_reg_loss = torch.abs(lamdba_gt - lambda_pred)
-        # rel_reg_loss_ratio = torch.div(abs_reg_loss, lamdba_gt)
+        lamdba_gt = [1 if input_clss_lbl[k]==input_clss_lbl_idx[k] else lam for k in range(len(input_clss_lbl))]
+        lamdba_gt = torch.Tensor(lamdba_gt)
+        #print("lambda_gt is:", lamdba_gt)
+        lamdba_gt = lamdba_gt.reshape(lamdba_gt.shape[0], 1)
+        lamdba_gt = lamdba_gt.to(device)
+        abs_reg_loss = torch.abs(lamdba_gt - lambda_pred)
+        rel_reg_loss_ratio = torch.div(abs_reg_loss, lamdba_gt)
         # "--------End"
         #print("lambda ground truth is :", lamdba_gt)
         #print("training lambda predicted is :", lambda_pred)
         #if epoch==49:
         #    print("lambda ground truth is :", lamdba_gt)
-        # "Novelty Regressor loss--start"
-        # mse_loss = MSELoss(reduction ="sum")
-        # reg_loss = mse_loss(lambda_pred, lamdba_gt)
-        # "---end"
+        "Novelty Regressor loss--start"
+        mse_loss = MSELoss()
+        reg_loss = mse_loss(lambda_pred, lamdba_gt)
+        "Novelty Regressor loss---end"
 
         mixup_domain_loss = (1 - lam) * domain_criterion(mixup_output_domain, unlbl_dom_idx) + lam * domain_criterion(
             mixup_output_domain, unlbl_dom)
@@ -181,17 +184,23 @@ def train(model, reg_model, source_lbl_train_ldr, source_unlbl_train_ldr, source
         "labelled data model output---start"
         inputs = lbl_input
         inputs = inputs.to(device)
-
         output_class, output_domain = model(inputs)
+        total_per_batch = inputs.size(0) + mixedup.size(0)
         "labelled data model output---end"
-        loss_class_lbl = 3 * class_criterion(output_class, labels)
-        loss_class =  loss_class_lbl + mixup_cls_loss      # + loss_pseudo_unl
+        #loss_class_lbl = class_criterion(lbl_output_class, labels)/inputs.size(0)
+        loss_class_lbl = class_criterion(output_class, labels)
+        mixup_cls_loss = mixup_cls_loss
+        loss_class =  loss_class_lbl + mixup_cls_loss     # + loss_pseudo_unl
         loss_domain_lbl = domain_criterion(output_domain, lbld_domains)
+        mixup_domain_loss = mixup_domain_loss
         loss_domain = loss_domain_lbl + mixup_domain_loss
 
         loss_entropy_lbl = entropy_criterion(output_class)
         loss_entropy_unlbl = entropy_criterion(mixedup_output)
         loss_entropy = loss_entropy_lbl + loss_entropy_unlbl
+        # _, lbl_pred_class = torch.max(output_class, 1)
+        # _, lbl_pred_domain = torch.max(output_domain, 1)
+
         _, lbl_pred_class = torch.max(output_class, 1)
         _, lbl_pred_domain = torch.max(output_domain, 1)
 
@@ -199,7 +208,7 @@ def train(model, reg_model, source_lbl_train_ldr, source_unlbl_train_ldr, source
         _, unlbl_pred_domain = torch.max(mixup_output_domain, 1)
         # print('beta in total loss :', beta)
 
-        total_loss =   loss_class + 0.5 * loss_domain + loss_entropy * beta #+ 0.05 * reg_loss
+        total_loss =   loss_class + loss_domain + loss_entropy * beta + 6 * reg_loss
         # zero the parameter gradients
 
         total_loss.backward()
@@ -212,10 +221,10 @@ def train(model, reg_model, source_lbl_train_ldr, source_unlbl_train_ldr, source
         running_loss_class += loss_class.item()
 
         total_correct_class = torch.sum(lbl_pred_class == labels.data) + torch.sum(unlbl_pred_class == input_lbl.data)
-        #total_reg_correct_class = torch.sum(rel_reg_loss_ratio <= 0.25)
+        total_reg_correct_class = torch.sum(rel_reg_loss_ratio <= 0.15)
 
         running_correct_class += total_correct_class
-        #running_reg_correct_class += total_reg_correct_class
+        running_reg_correct_class += total_reg_correct_class
         running_loss_domain += loss_domain.item()
         running_loss_domain_lbl += loss_domain_lbl.item()
         running_mixup_domain_loss += mixup_domain_loss.item()
@@ -225,7 +234,7 @@ def train(model, reg_model, source_lbl_train_ldr, source_unlbl_train_ldr, source
 
         # running_loss_entropy += loss_entropy.item() * inputs.size(0)
         running_loss_entropy += loss_entropy.item()
-        #running_reg_loss +=  reg_loss.item()
+        running_reg_loss +=  reg_loss.item()
         total_unlbl +=  mixedup.size(0)
         total_lbl += inputs.size(0)
 
@@ -233,22 +242,22 @@ def train(model, reg_model, source_lbl_train_ldr, source_unlbl_train_ldr, source
     # print('total unlabelled :', total_unlbl)
     # train_data_len = len(source_lbl_train_ldr.dataset)+len(source_unlbl_train_ldr.dataset)
     total = total_unlbl + total_lbl
-    epoch_loss_class_lbl = running_loss_class_lbl/ train_step
-    #epoch_loss_pseudo_unl = running_loss_pseudo_unl/ train_step
-    epoch_mixup_cls_loss = running_mixup_cls_loss/ train_step
-    epoch_loss_class = running_loss_class / train_step
+    epoch_loss_class_lbl = running_loss_class_lbl/train_step
+    #epoch_loss_pseudo_unl = running_loss_pseudo_unl/train_step
+    epoch_mixup_cls_loss = running_mixup_cls_loss/train_step
+    epoch_loss_class = running_loss_class/train_step
     epoch_acc_class = running_correct_class.double() / total
-    #epoch_reg_acc_class = 0.05 * running_reg_correct_class.double()/total_unlbl
-    #epoch_reg_loss =  running_reg_loss/train_step
-    epoch_loss_domain_lbl = running_loss_domain_lbl/ train_step
-    epoch_mixup_domain_loss = running_mixup_domain_loss/ train_step
-    epoch_loss_domain = 0.5 * running_loss_domain / train_step
+    epoch_reg_acc_class = running_reg_correct_class.double()/total_unlbl
+    epoch_reg_loss = 6 * running_reg_loss/train_step
+    epoch_loss_domain_lbl = running_loss_domain_lbl/train_step
+    epoch_mixup_domain_loss = running_mixup_domain_loss/train_step
+    epoch_loss_domain = running_loss_domain/train_step
 
     epoch_acc_domain = running_correct_domain.double() / total
-    epoch_loss_entropy = running_loss_entropy / train_step
+    epoch_loss_entropy = running_loss_entropy/train_step
     log = 'Train: Epoch: {} Alpha: {:.4f} Loss Class: {:.4f} Acc Class: {:.4f} Loss Domain: {:.4f} Acc Domain: {:.4f} ' \
-          'Loss Entropy: {:.4f} '.format(epoch, alpha, epoch_loss_class, epoch_acc_class, epoch_loss_domain,
-                                     epoch_acc_domain, epoch_loss_entropy)
+          'Loss Entropy: {:.4f} Reg_loss :{:.4f} Reg acc:{:.4f} '.format(epoch, alpha, epoch_loss_class, epoch_acc_class, epoch_loss_domain,
+                                     epoch_acc_domain, epoch_loss_entropy, epoch_reg_loss, epoch_reg_acc_class)
 
     log_anthr = 'Train: Epoch: {} Alpha: {:.4f} loss_class_lbl: {:.4f}, mixup_cls_loss: {:.4f} loss_domain_lbl: {:.4f}' \
                 ' mixup_domain_loss: {:.4f} '.format(epoch, alpha, epoch_loss_class_lbl, epoch_mixup_cls_loss,

@@ -160,7 +160,7 @@ class DG_Dataset(Dataset):
             print('length of unlabelled indices outside :', len(all_unlbl_indices))
             mixed_samples = [all_total_samples[i] for i in mixed_sampled_indices]
             #if self.labelling == 'unlbl':
-                
+
             total_samples.clear()
             total_samples.extend(total_domain_samples) 
             #total_samples.update(total_domain_samples) 

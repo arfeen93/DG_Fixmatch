@@ -90,16 +90,16 @@ def get_model_lr(name, train, model, reg_model, fc_weight=1.0, disc_weight=1.0):
     elif name == 'alexnet' and train == 'general':
         return [(model.base_model.features, 1.0),  (model.feature_layers, 1.0),
             (model.fc, 1.0 * fc_weight), (model.discriminator, 1.0 * disc_weight), (reg_model.reg_features, 1.0),
-                (reg_model.regressor, 1.0)]
+                (reg_model.regressor, 0.1)]
     elif name == 'caffenet' and train == 'general':
         return [(model.base_model.features, 1.0),  (model.base_model.classifier, 1.0),
             (model.base_model.class_classifier, 1.0 * fc_weight), (model.discriminator, 1.0 * disc_weight),
-                (reg_model.reg_features, 1.0), (reg_model.regressor, 0.10)]
+                (reg_model.reg_features, 1.0), (reg_model.regressor, 0.1)]
     elif name == 'resnet' and train == 'general':
         return [(model.base_model.conv1, 1.0), (model.base_model.bn1, 1.0), (model.base_model.layer1, 1.0), 
                 (model.base_model.layer2, 1.0), (model.base_model.layer3, 1.0), (model.base_model.layer4, 1.0), 
                 (model.base_model.fc, 1.0 * fc_weight), (model.discriminator, 1.0 * disc_weight),
-                (reg_model.reg_features, 1.0), (reg_model.regressor, 1.0)]
+                (reg_model.reg_features, 1.0), (reg_model.regressor, 0.1)]
 
 def get_optimizer( model, init_lr, momentum, weight_decay, feature_fixed=False, nesterov=False, per_layer=False):
     if feature_fixed:

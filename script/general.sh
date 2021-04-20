@@ -6,10 +6,9 @@ times=1
 for i in `seq 1 $times`
 do
   max=$((${#domain[@]}-1))
-  #for j in `seq 0 $max`
-  #do
-    #for lr_step in 15
-    for lr_step in 5
+#  for j in `seq 0 $max`
+#  do
+    for lr_step in 20
     do
       for epoch_num in 50
       do
@@ -38,7 +37,7 @@ do
             --scheduler='step' \
             --lr=0.001 \
             --lr-step=$lr_step \
-            --lr-decay-gamma=0.5 \
+            --lr-decay-gamma=0.1 \
             --nesterov \
             --fc-weight=10.0 \
             --disc-weight=10.0 \

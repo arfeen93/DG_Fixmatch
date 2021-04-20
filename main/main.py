@@ -82,6 +82,7 @@ if __name__ == '__main__':
 
     print('alpha_mixup is :', args.alpha_mixup)
     print("lr is:", args.lr)
+    print("lr step is:", args.lr_step)
     # print('get_domain_label :', get_domain_label)
     # print('get_cluster :', get_cluster)
 
@@ -197,31 +198,31 @@ if __name__ == '__main__':
             source_lbl_train=source_lbl_train, optimizers=optimizers, device=device, epoch=epoch, num_epoch=num_epoch,
             filename=path+'/source_train.txt', entropy=args.entropy, alpha_mixup=args.alpha_mixup, disc_weight=weight, entropy_weight=args.entropy_weight,
             grl_weight=args.grl_weight)
-
-        if epoch % args.eval_step == 0:
-            acc = eval_model(model, reg_model, source_val, source_lbl_train_eval, device, epoch, path+'/source_eval.txt')
-            acc_ = eval_model(model, reg_model, target_test, source_lbl_train_eval, device, epoch, path+'/target_test.txt')
-
-        if epoch % args.save_step == 0:
-            torch.save(model.state_dict(), os.path.join(
-                path, 'models',
-                "model_{}.pt".format(epoch)))
-
-        if acc >= best_acc:
-            best_acc = acc
-            test_acc = acc_
-            best_epoch = epoch
-            torch.save(model.state_dict(), os.path.join(
-                path, 'models',
-                "model_best.pt"))
-
-        for scheduler in schedulers:
-            scheduler.step()
-
-    best_model = get_model(args.model, args.train)(num_classes=source_lbl_train_ldr.dataset.num_class, num_domains=disc_dim, pretrained=False)
-    best_model.load_state_dict(torch.load(os.path.join(
-                path, 'models',
-                "model_best.pt"), map_location=device))
-    best_model = best_model.to(device)
-    test_acc = eval_model(best_model, reg_model, target_test, source_lbl_train_eval, device, best_epoch, path+'/target_best.txt')
-    print('Test Accuracy by the best model on the source domain is {} (at Epoch {})'.format(test_acc, best_epoch))
+    #
+    #     if epoch % args.eval_step == 0:
+    #         acc = eval_model(model, reg_model, source_val, source_lbl_train_eval, device, epoch, path+'/source_eval.txt')
+    #         acc_ = eval_model(model, reg_model, target_test, source_lbl_train_eval, device, epoch, path+'/target_test.txt')
+    #
+    #     if epoch % args.save_step == 0:
+    #         torch.save(model.state_dict(), os.path.join(
+    #             path, 'models',
+    #             "model_{}.pt".format(epoch)))
+    #
+    #     if acc >= best_acc:
+    #         best_acc = acc
+    #         test_acc = acc_
+    #         best_epoch = epoch
+    #         torch.save(model.state_dict(), os.path.join(
+    #             path, 'models',
+    #             "model_best.pt"))
+    #
+    #     for scheduler in schedulers:
+    #         scheduler.step()
+    #
+    # best_model = get_model(args.model, args.train)(num_classes=source_lbl_train_ldr.dataset.num_class, num_domains=disc_dim, pretrained=False)
+    # best_model.load_state_dict(torch.load(os.path.join(
+    #             path, 'models',
+    #             "model_best.pt"), map_location=device))
+    # best_model = best_model.to(device)
+    # test_acc = eval_model(best_model, reg_model, target_test, source_lbl_train_eval, device, best_epoch, path+'/target_best.txt')
+    # print('Test Accuracy by the best model on the source domain is {} (at Epoch {})'.format(test_acc, best_epoch))
