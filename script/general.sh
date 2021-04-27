@@ -10,7 +10,7 @@ do
 #  do
     for lr_step in 20
     do
-      for epoch_num in 50
+      for epoch_num in 400  #50
       do
         for alpha_mix in 0.3
 
@@ -34,7 +34,7 @@ do
             --exp-num=3 \
             --gpu=0 \
             --num-epoch=$epoch_num \
-            --scheduler='step' \
+            --scheduler='multistep' \
             --lr=0.001 \
             --lr-step=$lr_step \
             --lr-decay-gamma=0.1 \

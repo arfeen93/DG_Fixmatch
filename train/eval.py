@@ -39,7 +39,8 @@ def eval_model(model,reg_model, eval_data,train_lbl_data, device, epoch, filenam
             #for i in range(preds.shape[0]):
                 #if lamda_cls_pred[i] == preds[i] and preds[i]==labels.data[i]:
             running_corrects += torch.sum(preds == labels.data).item()
-            running_reg_correct += torch.sum(values >= 0.9).item()
+            #running_reg_correct += torch.sum(values >= 0.9).item()
+            running_reg_correct += torch.sum(indexes == labels.data).item()
                     #running_corrects+=1
                 #if lamda_cls_pred[i] == preds[i] or preds[i] == labels.data[i]:
                     #running_corrects_new += 1
@@ -56,8 +57,10 @@ def eval_model(model,reg_model, eval_data,train_lbl_data, device, epoch, filenam
     # epoch_lam_or_pred_orig_acc = running_corrects_new/len(eval_data.dataset)
     # epoch_pred_orig_acc = running_corrects_pred_orig/len(eval_data.dataset)
 
-    if (epoch) % 10 == 0:
+    if (epoch+1) % 50 == 0:
         print("lambda predicted is :", lambda_predict)
+        print("max lambda predicted is :", values)
+    #print("input for eval:", labels)
 
     log = 'Eval: Epoch: {} Loss: {:.4f} Class Acc. : {:.4f} Reg Accuracy : {:.4f}'\
         .format(epoch, epoch_loss, epoch_acc, epoch_reg_Acc) #, epoch_pred_orig_acc,epoch_lam_orig_acc, epoch_lam_or_pred_orig_acc)
@@ -65,7 +68,7 @@ def eval_model(model,reg_model, eval_data,train_lbl_data, device, epoch, filenam
     with open(filename, 'a') as f: 
         f.write(log + '\n')
     # tb1.close()
-    return epoch_acc
+    return epoch_acc, epoch_reg_Acc
 
 "Novelty purity predictor---start"
 def purity_predict(model, reg_model, inputs, train_lbl_data, outputs, device):
@@ -105,11 +108,15 @@ def purity_predict(model, reg_model, inputs, train_lbl_data, outputs, device):
         train_data_btch0 = train_data_btch
         train_data_ldr0 = torch.stack(train_data_btch0)
         train_data_ldr0 = train_data_ldr0.to(device)
+
         mixup_ldr0 = 0.5 * inputs + 0.5 * train_data_ldr0
-        mixup_eval_dlr_cat = torch.cat((mixup_ldr0, inputs), 1)
-        mixup_eval_dlr_cat = mixup_eval_dlr_cat.to(device)
+        x1, x2 = model.features(inputs)
+        x3, x4 = model.features(mixup_ldr0)
+        mixup_eval_ftr_cat_ldr = torch.cat((x2, x4), 1)
+        #mixup_eval_dlr_cat = torch.cat((mixup_ldr0, inputs), 1)
+        mixup_eval_ftr_cat_ldr = mixup_eval_ftr_cat_ldr.to(device)
         #print("mixup_eval_dlr_cat size is:", mixup_eval_dlr_cat.size())
-        lambda_predict0 = reg_model(mixup_eval_dlr_cat)
+        lambda_predict0 = reg_model(mixup_eval_ftr_cat_ldr)
         lambda_predict0=lambda_predict0.reshape(lambda_predict0.size(0), 1)
         lambda_predict = torch.cat((lambda_predict, lambda_predict0), 1)
     #print("all 7 lambda predicted are:", lambda_predict)

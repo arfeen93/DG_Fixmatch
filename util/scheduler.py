@@ -9,3 +9,8 @@ class inv_lr_scheduler(_LRScheduler):
         
     def get_lr(self):
         return [base_lr * ((1 + self.alpha * self.last_epoch / self.total_epoch) ** (-self.beta)) for base_lr in self.base_lrs]
+
+
+def get_reg_lr(optimizer):
+    for param_group in optimizer.param_groups:
+        return param_group['lr']

@@ -89,17 +89,17 @@ def get_model_lr(name, train, model, reg_model, fc_weight=1.0, disc_weight=1.0):
     
     elif name == 'alexnet' and train == 'general':
         return [(model.base_model.features, 1.0),  (model.feature_layers, 1.0),
-            (model.fc, 1.0 * fc_weight), (model.discriminator, 1.0 * disc_weight), (reg_model.reg_features, 1.0),
-                (reg_model.regressor, 0.1)]
+            (model.fc, 1.0 * fc_weight), (model.discriminator, 1.0 * disc_weight)]
+                #(reg_model.reg_features, 1.0),(reg_model.regressor, 0.1)]
     elif name == 'caffenet' and train == 'general':
         return [(model.base_model.features, 1.0),  (model.base_model.classifier, 1.0),
-            (model.base_model.class_classifier, 1.0 * fc_weight), (model.discriminator, 1.0 * disc_weight),
-                (reg_model.reg_features, 1.0), (reg_model.regressor, 0.1)]
+            (model.base_model.class_classifier, 1.0 * fc_weight), (model.discriminator, 1.0 * disc_weight)]
+                #(reg_model.reg_features, 1.0), (reg_model.regressor, 0.1)]
     elif name == 'resnet' and train == 'general':
         return [(model.base_model.conv1, 1.0), (model.base_model.bn1, 1.0), (model.base_model.layer1, 1.0), 
                 (model.base_model.layer2, 1.0), (model.base_model.layer3, 1.0), (model.base_model.layer4, 1.0), 
-                (model.base_model.fc, 1.0 * fc_weight), (model.discriminator, 1.0 * disc_weight),
-                (reg_model.reg_features, 1.0), (reg_model.regressor, 0.1)]
+                (model.base_model.fc, 1.0 * fc_weight), (model.discriminator, 1.0 * disc_weight)]
+                #(reg_model.reg_features, 1.0), (reg_model.regressor, 0.1)]
 
 def get_optimizer( model, init_lr, momentum, weight_decay, feature_fixed=False, nesterov=False, per_layer=False):
     if feature_fixed:
@@ -124,6 +124,13 @@ def get_optimizer( model, init_lr, momentum, weight_decay, feature_fixed=False, 
             # optimizer = optim.Adam(params_to_update, lr=init_lr, betas=(0.9, 0.999), eps=1e-8, weight_decay=weight_decay)
     
     return optimizer
+
+def reg_optimizer(reg_model, reg_lr, momentum, weight_decay, nesterov=False):
+    params_to_update = reg_model.parameters()
+    reg_optim = optim.SGD(
+        params_to_update, lr=reg_lr, momentum=momentum,
+        weight_decay=weight_decay, nesterov=nesterov)
+    return reg_optim
 
 schedulers_map = {
     'step': StepLR,

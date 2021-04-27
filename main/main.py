@@ -7,6 +7,7 @@ import argparse
 import os
 from util.util import *
 from train.eval import *
+from util.scheduler import *
 from clustering.domain_split import domain_split
 from dataloader.dataloader import random_split_dataloader
 from model.purity_predictor import *
@@ -118,6 +119,8 @@ if __name__ == '__main__':
     optimizers = [get_optimizer( model_part, args.lr * alpha, args.momentum, args.weight_decay,
                                 args.feature_fixed, args.nesterov, per_layer=False) for model_part, alpha in model_lr]
     #print("optimizers:", optimizers)
+    reg_optimizers = reg_optimizer(reg_model, reg_lr=0.001, momentum=args.momentum, weight_decay=args.weight_decay, nesterov=args.nesterov)
+    # "Regression model optimizer"
 
 
     if args.scheduler == 'inv':
@@ -126,16 +129,20 @@ if __name__ == '__main__':
     elif args.scheduler == 'step':
         schedulers = [get_scheduler(args.scheduler)(optimizer=opt, step_size=lr_step, gamma=args.lr_decay_gamma)
                      for opt in optimizers]
+        reg_scheduler = get_scheduler('multistep')(optimizer=reg_optimizers, milestones=[10, 40, 80, 150, 200],
+                                                   gamma=0.1)
     elif args.scheduler == 'multistep':
-        scheduler = [get_scheduler(args.scheduler)(optimizer=opt, milestones =[20, 30, 45], gamma=args.lr_decay_gamma)
+        schedulers = [get_scheduler(args.scheduler)(optimizer=opt, milestones =[20, 40, 100, 200], gamma=args.lr_decay_gamma)
                      for opt in optimizers]
+        reg_scheduler = get_scheduler('multistep')(optimizer=reg_optimizers, milestones=[10, 40, 80, 150, 200], gamma=0.1)
         print('multistep scheduler is used')
     else:
         raise ValueError('Name of scheduler unknown %s' %args.scheduler)
-            
+
     best_acc = 0.0
     test_acc = 0.0
     best_epoch = 0
+    best_reg_acc = 0
 
     # if args.alpha_mixup > 0:
     #     lam = np.random.beta(args.alpha_mixup, args.alpha_mixup)
@@ -194,35 +201,43 @@ if __name__ == '__main__':
         # print('weight :', weight)
         # print('unlbl_weight :', unlbl_weight)
         model, optimizers = get_train(args.train)(
-            model=model,reg_model = reg_model, source_lbl_train_ldr=source_lbl_train_ldr, source_unlbl_train_ldr=source_unlbl_train_ldr,
+            model=model,reg_model = reg_model, reg_optimizers=reg_optimizers, source_lbl_train_ldr=source_lbl_train_ldr, source_unlbl_train_ldr=source_unlbl_train_ldr,
             source_lbl_train=source_lbl_train, optimizers=optimizers, device=device, epoch=epoch, num_epoch=num_epoch,
             filename=path+'/source_train.txt', entropy=args.entropy, alpha_mixup=args.alpha_mixup, disc_weight=weight, entropy_weight=args.entropy_weight,
             grl_weight=args.grl_weight)
-    #
-    #     if epoch % args.eval_step == 0:
-    #         acc = eval_model(model, reg_model, source_val, source_lbl_train_eval, device, epoch, path+'/source_eval.txt')
-    #         acc_ = eval_model(model, reg_model, target_test, source_lbl_train_eval, device, epoch, path+'/target_test.txt')
-    #
-    #     if epoch % args.save_step == 0:
-    #         torch.save(model.state_dict(), os.path.join(
-    #             path, 'models',
-    #             "model_{}.pt".format(epoch)))
-    #
-    #     if acc >= best_acc:
-    #         best_acc = acc
-    #         test_acc = acc_
-    #         best_epoch = epoch
-    #         torch.save(model.state_dict(), os.path.join(
-    #             path, 'models',
-    #             "model_best.pt"))
-    #
-    #     for scheduler in schedulers:
-    #         scheduler.step()
-    #
-    # best_model = get_model(args.model, args.train)(num_classes=source_lbl_train_ldr.dataset.num_class, num_domains=disc_dim, pretrained=False)
-    # best_model.load_state_dict(torch.load(os.path.join(
-    #             path, 'models',
-    #             "model_best.pt"), map_location=device))
-    # best_model = best_model.to(device)
-    # test_acc = eval_model(best_model, reg_model, target_test, source_lbl_train_eval, device, best_epoch, path+'/target_best.txt')
-    # print('Test Accuracy by the best model on the source domain is {} (at Epoch {})'.format(test_acc, best_epoch))
+
+        if epoch % args.eval_step == 0:
+            acc, reg_acc = eval_model(model, reg_model, source_val, source_lbl_train_eval, device, epoch, path+'/source_eval.txt')
+            acc_, reg_acc_ = eval_model(model, reg_model, target_test, source_lbl_train_eval, device, epoch, path+'/target_test.txt')
+
+        if epoch % args.save_step == 0:
+            torch.save(model.state_dict(), os.path.join(
+                path, 'models',
+                "model_{}.pt".format(epoch)))
+
+        if acc >= best_acc:
+            best_acc = acc
+            test_acc = acc_
+            best_epoch = epoch
+            torch.save(model.state_dict(), os.path.join(
+                path, 'models',
+                "model_best.pt"))
+
+        # if reg_acc>=best_reg_acc:
+        #     best_reg_acc=reg_acc
+
+
+        curr_reg_lr = get_reg_lr(reg_optimizers)
+        print("Current reg model lr :", curr_reg_lr)
+        for scheduler in schedulers:
+            scheduler.step()
+        reg_scheduler.step()
+
+
+    best_model = get_model(args.model, args.train)(num_classes=source_lbl_train_ldr.dataset.num_class, num_domains=disc_dim, pretrained=False)
+    best_model.load_state_dict(torch.load(os.path.join(
+                path, 'models',
+                "model_best.pt"), map_location=device))
+    best_model = best_model.to(device)
+    test_acc = eval_model(best_model, reg_model, target_test, source_lbl_train_eval, device, best_epoch, path+'/target_best.txt')
+    print('Test Accuracy by the best model on the source domain is {} (at Epoch {})'.format(test_acc, best_epoch))
