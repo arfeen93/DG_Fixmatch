@@ -10,7 +10,7 @@ do
 #  do
     for lr_step in 20
     do
-      for epoch_num in 400  #50
+      for epoch_num in 50 100 200 300 #50
       do
         for alpha_mix in 0.3
 

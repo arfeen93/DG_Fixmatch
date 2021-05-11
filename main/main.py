@@ -119,7 +119,7 @@ if __name__ == '__main__':
     optimizers = [get_optimizer( model_part, args.lr * alpha, args.momentum, args.weight_decay,
                                 args.feature_fixed, args.nesterov, per_layer=False) for model_part, alpha in model_lr]
     #print("optimizers:", optimizers)
-    reg_optimizers = reg_optimizer(reg_model, reg_lr=0.001, momentum=args.momentum, weight_decay=args.weight_decay, nesterov=args.nesterov)
+    reg_optimizers = reg_optimizer(reg_model, reg_lr=0.01, momentum=args.momentum, weight_decay=args.weight_decay, nesterov=args.nesterov)
     # "Regression model optimizer"
 
 
@@ -129,12 +129,12 @@ if __name__ == '__main__':
     elif args.scheduler == 'step':
         schedulers = [get_scheduler(args.scheduler)(optimizer=opt, step_size=lr_step, gamma=args.lr_decay_gamma)
                      for opt in optimizers]
-        reg_scheduler = get_scheduler('multistep')(optimizer=reg_optimizers, milestones=[10, 40, 80, 150, 200],
+        reg_scheduler = get_scheduler('multistep')(optimizer=reg_optimizers, milestones=[60, 90, 150, 200],
                                                    gamma=0.1)
     elif args.scheduler == 'multistep':
         schedulers = [get_scheduler(args.scheduler)(optimizer=opt, milestones =[20, 40, 100, 200], gamma=args.lr_decay_gamma)
                      for opt in optimizers]
-        reg_scheduler = get_scheduler('multistep')(optimizer=reg_optimizers, milestones=[10, 40, 80, 150, 200], gamma=0.1)
+        reg_scheduler = get_scheduler('multistep')(optimizer=reg_optimizers, milestones=[20, 60, 100, 180], gamma=0.1)
         print('multistep scheduler is used')
     else:
         raise ValueError('Name of scheduler unknown %s' %args.scheduler)

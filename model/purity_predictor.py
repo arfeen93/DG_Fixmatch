@@ -47,7 +47,7 @@ class Purity(nn.Module):
             ("relu9", nn.ReLU(inplace=True)),
             ("drop9", nn.Dropout() if dropout else Id()),
             ("fc10", nn.Linear(128, 1)),
-            ("sigmoid", nn.Sigmoid())
+            #("sigmoid", nn.Sigmoid())
         ]))
 
     def forward(self, x):

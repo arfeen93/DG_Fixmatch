@@ -18,6 +18,7 @@ from torchvision.utils import make_grid
 def train(model, reg_model, reg_optimizers, source_lbl_train_ldr, source_unlbl_train_ldr, source_lbl_train,
           optimizers, device, epoch, num_epoch, filename, entropy, alpha_mixup, disc_weight=None, entropy_weight=1.0, grl_weight=1.0):
     class_criterion = nn.CrossEntropyLoss(reduction='mean')
+    reg_criterion = nn.BCEWithLogitsLoss()
     # print(disc_weight)
     #print('source_unlbl_train_ldr len are :', len(list(source_unlbl_train_ldr)[0]))
     domain_criterion = nn.CrossEntropyLoss(weight=disc_weight)
@@ -79,6 +80,8 @@ def train(model, reg_model, reg_optimizers, source_lbl_train_ldr, source_unlbl_t
         #print(' input_lbl train_unlbl_data loader :', ((input_lbl)))
         input_weak = input_w[0]
         input_strong = input_w[1]
+        input_std = input_w[2]
+        input_std = input_std.to(device)
         input_strong = input_strong.to(device)
         input_weak = input_weak.to(device)
         unlbl_domains = unlbl_dataldr_dom_lbl
@@ -124,9 +127,14 @@ def train(model, reg_model, reg_optimizers, source_lbl_train_ldr, source_unlbl_t
         '''doing mixup of strong_aug unlbled data as per mixup paper'''
         mixedup, input_clss_lbl, input_clss_lbl_idx, unlbl_dom, unlbl_dom_idx, lam = mixup(device, input_strong, pseudo_labels_orig,
                                                        unlbl_domains, alpha_mixup, batch_size=128)
-        #print("lambda for mixup:", lam)
-        #lbl_dom = lbl_dom.to(device)
-        #unlbl_dom = unlbl_dom.to(device)
+
+        "mixup for regressor model"
+        # mixed_input_std, input_clss_lbl_reg, input_clss_lbl_idx_reg, unlbl_dom_reg, unlbl_dom_idx_reg, lam_reg = mixup(device, input_std, pseudo_labels_orig,
+        #                                                unlbl_domains, alpha_mixup, batch_size=128)
+        # mixed_input_std = mixed_input_std.to(device)
+        # print("lambda for mixup:", lam)
+        # lbl_dom = lbl_dom.to(device)
+        # unlbl_dom = unlbl_dom.to(device)
         mixedup = mixedup.to(device)
 
         "Unlabelled data model output---start"
@@ -135,9 +143,15 @@ def train(model, reg_model, reg_optimizers, source_lbl_train_ldr, source_unlbl_t
         "Novelty Regressor model data passing--start"
         x, x1 = model.features(mixedup)
         x2, x3 = model.features(input_strong)
+        # x, x1 = model.features(mixed_input_std)
+        # x2, x3 = model.features(input_std)
         mixup_unlbl_str_dlr_ftre_cat = torch.cat((x1, x3), 1)
         #mixup_unlbl_str_dlr_cat = torch.cat((mixedup, input_strong), 1)
         lambda_pred = reg_model(mixup_unlbl_str_dlr_ftre_cat)
+        lambda_pred_cls = torch.round(torch.sigmoid(lambda_pred))
+
+        #lambda_pred_clss = torch.round(lambda_pred)
+        #prob_lambda_pred = F.softmax(lambda_pred, dim = 1)
         #lambda_pred = reg_model(mixedup, input_strong)
         "Novelty Regressor model data passing--end"
         prob_mixup_output = F.softmax(mixedup_output, dim=1)
@@ -156,13 +170,15 @@ def train(model, reg_model, reg_optimizers, source_lbl_train_ldr, source_unlbl_t
         #print("input class lbl:", input_clss_lbl)
         #print("input class lbl idx:", input_clss_lbl_idx)
         # "Novelty regressor part---start"
-        lamdba_gt = [1 if input_clss_lbl[k]==input_clss_lbl_idx[k] else lam for k in range(len(input_clss_lbl))]
+        lamdba_gt = [1 if input_clss_lbl[k]==input_clss_lbl_idx[k] else 0 for k in range(len(input_clss_lbl))]
+        #lamdba_gt = [1 if input_clss_lbl_reg[k]==input_clss_lbl_idx_reg[k] else 0 for k in range(len(input_clss_lbl_reg))]
         lamdba_gt = torch.Tensor(lamdba_gt)
         #print("lambda_gt is:", lamdba_gt)
         lamdba_gt = lamdba_gt.reshape(lamdba_gt.shape[0], 1)
         lamdba_gt = lamdba_gt.to(device)
-        abs_reg_loss = torch.abs(lamdba_gt - lambda_pred)
-        rel_reg_loss_ratio = torch.div(abs_reg_loss, lamdba_gt)
+
+        # abs_reg_loss = torch.abs(lamdba_gt - lambda_pred)
+        # rel_reg_loss_ratio = torch.div(abs_reg_loss, lamdba_gt)
         # "--------End"
         #print("lambda ground truth is :", lamdba_gt)
         if (epoch+1)%10==0:
@@ -170,8 +186,13 @@ def train(model, reg_model, reg_optimizers, source_lbl_train_ldr, source_unlbl_t
                 print("lambda ground truth is :", lamdba_gt)
                 print("training lambda predicted is :", lambda_pred)
         "Novelty Regressor loss--start"
-        mse_loss = MSELoss()  # noveltrain.out is without reduction="sum"
-        reg_loss = mse_loss(lambda_pred, lamdba_gt)
+        reg_loss = reg_criterion(lambda_pred, lamdba_gt)
+        #lambda_correct = torch.max(lambda_pred, 1)
+        # mse_loss = MSELoss()  # noveltrain.out is without reduction="sum"
+        # reg_loss = mse_loss(lambda_pred, lamdba_gt)
+        # l1_loss = nn.L1Loss()
+        # reg_loss = l1_loss(lambda_pred, lamdba_gt)
+
         "Novelty Regressor loss---end"
 
         mixup_domain_loss = (1 - lam) * domain_criterion(mixup_output_domain, unlbl_dom_idx) + lam * domain_criterion(
@@ -231,7 +252,7 @@ def train(model, reg_model, reg_optimizers, source_lbl_train_ldr, source_unlbl_t
         running_loss_class += loss_class.item()
 
         total_correct_class = torch.sum(lbl_pred_class == labels.data) + torch.sum(unlbl_pred_class == input_lbl.data)
-        total_reg_correct_class = torch.sum(rel_reg_loss_ratio <= 0.15)
+        total_reg_correct_class = torch.sum(lambda_pred_cls == lamdba_gt).item()
 
         running_correct_class += total_correct_class
         running_reg_correct_class += total_reg_correct_class
@@ -258,7 +279,7 @@ def train(model, reg_model, reg_optimizers, source_lbl_train_ldr, source_unlbl_t
     epoch_mixup_cls_loss = running_mixup_cls_loss /train_step
     epoch_loss_class = running_loss_class /train_step
     epoch_acc_class = running_correct_class.double() / total
-    epoch_reg_acc_class = running_reg_correct_class.double()/total_unlbl
+    epoch_reg_acc_class = running_reg_correct_class/total_unlbl
     epoch_reg_loss = running_reg_loss /train_step
     epoch_loss_domain_lbl = running_loss_domain_lbl/train_step
     epoch_mixup_domain_loss = running_mixup_domain_loss/train_step
