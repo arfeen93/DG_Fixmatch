@@ -78,7 +78,9 @@ def domain_split(dataset, model, device, cluster_before, filename, epoch, nmb_cl
     cluster_method = clustering.__dict__[method](nmb_cluster, pca_dim, whitening, L2norm)
 
     dataset.set_transform('val')
+
     dataloader = DataLoader(dataset, batch_size=batchsize, shuffle=False, num_workers=num_workers)
+
     #dom_labels = []
     #for sr_no, data in enumerate(dataloader.dataset):
         #images, cls_labl, dom_labl = data
@@ -94,12 +96,13 @@ def domain_split(dataset, model, device, cluster_before, filename, epoch, nmb_cl
 
     class_nmi = normalized_mutual_info_score(
         cluster_list, dataloader.dataset.labels, average_method='geometric')
-    
+
     domain_nmi = normalized_mutual_info_score(
         cluster_list, dataloader.dataset.domains, average_method='geometric')
+
     before_nmi = normalized_mutual_info_score(
         cluster_list, cluster_before, average_method='arithmetic')
-    
+
     log = 'Epoch: {}, NMI against class labels: {:.3f}, domain labels: {:.3f}, previous assignment: {:.3f}'.format(epoch, class_nmi, domain_nmi, before_nmi)
     print(log)
     if filename:

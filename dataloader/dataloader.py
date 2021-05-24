@@ -7,81 +7,41 @@ import torchvision
 from torchvision.utils import save_image
 import matplotlib.pyplot as plt 
 from torchvision.utils import make_grid
-
-def random_split_dataloader (data, data_root, source_domain, target_domain, batch_size,
+from torch.utils.data.sampler import Sampler
+import itertools
+def random_split_dataloader (data, data_root, source_domain, target_domain, batch_size, labeled_batch_size,
                    get_domain_label=False, get_cluster=False, num_workers=4, color_jitter=True, min_scale=0.8):
+
     if data=='VLCS': 
         split_rate = 0.7
     else: 
         split_rate = 0.9
-    source_lbl_train = DG_Dataset(root_dir=data_root, domain=source_domain, split='val',labelling='lbl',
+    source = DG_Dataset(root_dir=data_root, domain=source_domain, split='val',
                                      get_domain_label=False, get_cluster=False, color_jitter=color_jitter, min_scale=min_scale)
-    # print(' source label train data :', list(source_lbl_train))
-    source_unlbl = DG_Dataset(root_dir=data_root, domain=source_domain, split='val', labelling='unlbl',
-                                     get_domain_label=False, get_cluster=False, color_jitter=color_jitter, min_scale=min_scale)
-    # source_train, source_val = random_split(source, [int(len(source)*split_rate), len(source)-int(len(source)*split_rate)])
-    # print('source_lbl_train length :', len(source_lbl_train))
-    # print('source_unlbl_train length :', len(source_unlbl))
-    
-    # Labelled training and validation setup
-    # random_seed_lbl = 0
-    # torch.manual_seed(random_seed_lbl)
-    
-    # source_lbl_train, source_lbl_val = random_split(source_lbl, [int(len(source_lbl)*split_rate), len(source_lbl)-int(len(source_lbl)*split_rate)])
+    lbl_indexes, unlbl_indexes = source.lbl_unlbl_indexes()
 
-    
-    # unabelled training and validation setup
-    seed = 1
+    seed = 10
     torch.manual_seed(seed)
-    source_unlbl_train, source_unlbl_val = random_split( source_unlbl, [int(len( source_unlbl)*split_rate), len( source_unlbl)-int(len( source_unlbl)*split_rate)])
-    
-    # torch.save(source_lbl_val, 'source_lbl_val_{}.pt'.format(t))
-    # torch.save(source_unlbl_val, 'source_unlbl_val_{}.pt'.format(t))
-   
-    # source_train = deepcopy(source_train)
-    source_lbl_train = deepcopy(source_lbl_train)
-    source_lbl_train_eval = deepcopy(source_lbl_train)
-    source_unlbl_train = deepcopy(source_unlbl_train)
-    # print('source_lbl_train without augmentation :', list(source_lbl_train)[0])
-    source_val = source_unlbl_val
-    # source_val = ConcatDataset([source_lbl_val, source_unlbl_val])
-    
-    source_unlbl_train.dataset.split='randaugment'
-    # source_unlbl_train.dataset.set_transform('train')
-    # print("Doing unlabelled RandAugment")
-    source_unlbl_train.dataset.set_transform('randaugment')
-    source_unlbl_train.dataset.get_domain_label = get_domain_label
-    # source_lbl_train.dataset.get_cluster=get_cluster
-    source_unlbl_train.dataset.get_cluster = get_cluster
-   
-    
-    
-    # source_lbl_train.dataset.split='randaugment'
-    source_lbl_train.split='randaugment'
-    # source_lbl_train.dataset.set_transform('train')
-    # print("Doing labelled RandAugment")
-    # source_lbl_train.dataset.set_transform('randaugment')
-    source_lbl_train.set_transform('randaugment')
-    # source_lbl_train.dataset.get_domain_label=get_domain_label
-    source_lbl_train.get_domain_label = get_domain_label
-    # source_lbl_train.dataset.get_cluster=get_cluster
-    source_lbl_train.get_cluster = get_cluster
-    source_lbl_train_eval.set_transform("val")
-    # print('source_lbl_train with augmentation :', list(source_lbl_train)[0])
-    # print('source_lbl_train data :',list(source_lbl_train)[0][0][0])
-    # source_train, source_val = random_split(source, [int(len(source)*split_rate), len(source)-int(len(source)*split_rate)])
+    source_train, source_val = random_split(source, [int(len(source)*split_rate), len(source)-int(len(source)*split_rate)])
+    batch_sampler = TwoStreamBatchSampler(unlbl_indexes, lbl_indexes, batch_size, labeled_batch_size)
 
-    target_test =  DG_Dataset(root_dir=data_root, domain=target_domain, split='test',labelling='lbl',
+
+    source_train = deepcopy(source_train)
+    
+    source_train.dataset.split='randaugment'
+    source_train.dataset.set_transform('randaugment')
+    source_train.dataset.get_domain_label = get_domain_label
+    source_train.dataset.get_cluster = get_cluster
+
+
+    target_test =  DG_Dataset(root_dir=data_root, domain=target_domain, split='test',
                                    get_domain_label=False, get_cluster=False)
     
     print('target_test length :', len(target_test))
-    source_train_len = len(source_lbl_train) + len(source_unlbl_train)
-    print('Train: {}, Val: {}, Test: {}'.format(source_train_len, len(source_val), len(target_test)))
+    print('Train: {}, Val: {}, Test: {}'.format(len(source_train), len(source_val), len(target_test)))
     
-    # source_train = DataLoader(source_train, batch_size=batch_size, shuffle=True, num_workers=num_workers)
-    
-    
-    source_lbl_train_ldr = DataLoader(source_lbl_train, batch_size=batch_size, shuffle=True, num_workers=num_workers)
+    #source_train = DataLoader(source_train, batch_size=batch_size, shuffle=True, num_workers=num_workers)
+    source_train = DataLoader(source_train, batch_sampler=batch_sampler, num_workers=0, pin_memory=True)
     
     # Debugging for augmentation
     # for images, trgt_lbl, dom_lbl in source_lbl_train:
@@ -90,8 +50,6 @@ def random_split_dataloader (data, data_root, source_domain, target_domain, batc
     #     ax.set_xticks([]); ax.set_yticks([])
     #     save_image(make_grid(img[:128], nrow=16), "lbld_data.png")
     #     break
-        
-    source_unlbl_train_ldr = DataLoader(source_unlbl_train, batch_size=batch_size, shuffle=True, num_workers=num_workers)
     #print("source_unlbl_train_ldr is:",(list(source_unlbl_train_ldr)[0]))
     # for images, trgt_lbl, pseudo_dom_lbl in source_unlbl_train:
     #     img_w = images[0]
@@ -108,7 +66,50 @@ def random_split_dataloader (data, data_root, source_domain, target_domain, batc
     source_val  = DataLoader(source_val, batch_size=batch_size, shuffle=False, num_workers=num_workers)
     target_test = DataLoader(target_test, batch_size=batch_size, shuffle=False, num_workers=num_workers)
 
+    return source_train, source_val, target_test
 
 
-    return source_lbl_train_ldr, source_unlbl_train_ldr, source_val, target_test, source_lbl_train, source_lbl_train_eval
-    # return source_train, source_val, target_test, source_lbl_train
+class TwoStreamBatchSampler(Sampler):
+    """Iterate two sets of indices
+    An 'epoch' is one iteration through the primary indices.
+    During the epoch, the secondary indices are iterated through
+    as many times as needed.
+    """
+    def __init__(self, primary_indices, secondary_indices, batch_size, secondary_batch_size):
+        self.primary_indices = primary_indices
+        self.secondary_indices = secondary_indices
+        self.secondary_batch_size = secondary_batch_size
+        self.primary_batch_size = batch_size - secondary_batch_size
+
+        assert len(self.primary_indices) >= self.primary_batch_size > 0
+        assert len(self.secondary_indices) >= self.secondary_batch_size > 0
+
+    def __iter__(self):
+        primary_iter = iterate_once(self.primary_indices)
+        secondary_iter = iterate_eternally(self.secondary_indices)
+        return (
+            primary_batch + secondary_batch
+            for (primary_batch, secondary_batch)
+            in  zip(grouper(primary_iter, self.primary_batch_size),
+                    grouper(secondary_iter, self.secondary_batch_size))
+        )
+
+    def __len__(self):
+        return len(self.primary_indices) // self.primary_batch_size
+
+def iterate_once(iterable):
+    return np.random.permutation(iterable)
+
+
+def iterate_eternally(indices):
+    def infinite_shuffles():
+        while True:
+            yield np.random.permutation(indices)
+    return itertools.chain.from_iterable(infinite_shuffles())
+
+
+def grouper(iterable, n):
+    "Collect data into fixed-length chunks or blocks"
+    # grouper('ABCDEFG', 3) --> ABC DEF"
+    args = [iter(iterable)] * n
+    return zip(*args)

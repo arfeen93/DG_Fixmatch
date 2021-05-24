@@ -10,9 +10,9 @@ do
 #  do
     for lr_step in 20
     do
-      for epoch_num in 50 100 200 300 #50
+      for epoch_num in 50 #100 200 300
       do
-        for alpha_mix in 0.3
+        for alpha_mix in  0.3
 
         do
 
@@ -32,7 +32,7 @@ do
             --clustering-step=1 \
             --entropy='default' \
             --exp-num=3 \
-            --gpu=0 \
+            --gpu=1 \
             --num-epoch=$epoch_num \
             --scheduler='multistep' \
             --lr=0.001 \
