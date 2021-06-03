@@ -243,14 +243,13 @@ def train(model, reg_model, reg_optimizers, source_train, optimizers,
     # train_data_len = len(source_lbl_train_ldr.dataset)+len(source_unlbl_train_ldr.dataset)
     total = batch_samples
 
-    epoch_loss_class = running_loss_class /total
-    epoch_
+    epoch_loss_class = running_loss_class /num_epoch
     epoch_acc_class = running_correct_class.double() / total
     #epoch_reg_acc_class = running_reg_correct_class/total_unlbl
     #epoch_reg_loss = running_reg_loss /train_step
-    epoch_loss_domain = running_loss_domain /total
+    epoch_loss_domain = running_loss_domain /num_epoch
     epoch_acc_domain = running_correct_domain.double() / total
-    epoch_loss_entropy = running_loss_entropy/total
+    epoch_loss_entropy = running_loss_entropy/num_epoch
     log = 'Train: Epoch: {} Alpha: {:.4f} Loss Class: {:.4f} Acc Class: {:.4f} Loss Domain: {:.4f} Acc Domain: {:.4f} ' \
           'Loss Entropy: {:.4f} '.format(epoch, alpha, epoch_loss_class, epoch_acc_class, epoch_loss_domain,
                                      epoch_acc_domain, epoch_loss_entropy, )

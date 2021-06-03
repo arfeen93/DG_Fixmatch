@@ -6,7 +6,7 @@ from numpy.random import *
 import random
 from torch.nn import MSELoss
 
-def eval_model(model,reg_model, eval_data,train_lbl_data, lbl_train_data_cls, device, epoch, filename):
+def eval_model(model,reg_model, eval_data, device, epoch, filename):
     criterion = nn.CrossEntropyLoss()
     reg_criterion = nn.BCEWithLogitsLoss()
     softmax = nn.Softmax(dim = 1)
