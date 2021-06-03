@@ -1,6 +1,7 @@
 from torch.utils.data import Dataset
 import sys
 import os
+import random
 from torchvision import transforms
 from torchvision.datasets.folder import make_dataset, default_loader
 import numpy as np
@@ -114,6 +115,7 @@ class DG_Dataset(Dataset):
         #print("self.clusters:", self.clusters)
         self.images = [s[0] for s in total_samples]
         self.labels = [s[1] for s in total_samples]
+        self.total_samples = total_samples
 
     def set_cluster(self, cluster_list):
         if len(cluster_list) != len(self.images):
@@ -161,14 +163,15 @@ class DG_Dataset(Dataset):
         all_total_samples = []
         all_unlbl_indices = []
         all_lbl_indices = []
+        all_val_indices = []
         total_dom_indice = 0
 
         classes, class_to_idx = self.find_classes(self.root_dir + self.domain[0] + '/')
         self.num_class = len(classes)
 
-        indice = torch.load('/home/arfeen/papers_code/dom_gen_aaai_2020/dg_mmld-master/indices_final.pt')['indices']
+        indice = torch.load('/home/arfeen/papers_code/dom_gen_aaai_2020/dg_mmld-master/indices_final_170_june2021.pt')['indices']
         # print(indice)
-
+        #print("domains are:", self.domain)
         # indices_mixed = torch.load ('/home/arfeen/papers_code/dom_gen_aaai_2020/saved-indices/mixed_domain_clustering_indices_all_indices.pt')['indices']
         for i, item in enumerate(self.domain):
             # print(item)
@@ -180,11 +183,21 @@ class DG_Dataset(Dataset):
 
             label_indice = [x + total_dom_indice for x in sampled_indices]
             unlbl_indice = [k + total_dom_indice for k in range(len(samples_data)) if k not in sampled_indices]
-            #val_indices = unlbl_indice[:len(unlbl_indice)-]
+
             all_unlbl_indices.extend(unlbl_indice)
             all_lbl_indices.extend(label_indice)
             # print('length of unlabelled indices :', len(all_unlbl_indices))
-            total_dom_indice += len(samples_data)
-        print("all_unlbl_indices:", all_unlbl_indices)
-        print("all_lbl_indices:", all_lbl_indices)
-        return all_lbl_indices,  all_unlbl_indices
+            total_dom_indice = total_dom_indice + len(samples_data)
+
+        # print("all_unlbl_indices:", all_unlbl_indice_train)
+        # print("all_lbl_indices:", all_lbl_indices)
+        # print("all_val_indices:", val_indice)
+        unlbl_len = len(all_unlbl_indices)
+        #print("unlbl_len:", unlbl_len)
+        val_indices = random.sample(all_unlbl_indices, np.int64(np.ceil(unlbl_len * 0.1)))
+        unlbl_train_indices = [x for x in all_unlbl_indices if x not in val_indices]
+
+        return all_lbl_indices,  unlbl_train_indices, val_indices
+
+
+

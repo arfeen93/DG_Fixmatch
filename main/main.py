@@ -36,7 +36,7 @@ if __name__ == '__main__':
     parser.add_argument('--save-step', type=int, default=100)
     
     parser.add_argument('--batch-size', type=int, default=128)
-    parser.add_argument('--labeled-batch-size', type=int, default=9, help='no of labelled sample in a batch')
+    parser.add_argument('--labeled-batch-size', type=int, default=50, help='no of labelled sample in a batch')
     parser.add_argument('--scheduler', default='step')
     parser.add_argument('--lr', type=float, default=0.001)
     parser.add_argument('--lr-step', type=int, default=24)
@@ -71,6 +71,12 @@ if __name__ == '__main__':
         
     domain = get_domain(args.data)
     source_domain, target_domain = split_domain(domain, args.exp_num)
+    # "For labelled and unlabelled indexes---start"
+    # dom_wise_samples = [1503, 1843, 2109, 3536]
+    # dom_wise_samples.pop(args.exp_num)
+    # train_sam_nos = dom_wise_samples
+    # #print(train_sam_nos)
+    # "---end"
 
     device = torch.device("cuda:" + str(args.gpu) if torch.cuda.is_available() else "cpu")
     print('device is :', device)
@@ -80,7 +86,7 @@ if __name__ == '__main__':
     print("lr is:", args.lr)
     print("lr step is:", args.lr_step)
 
-    source_train, source_val, target_test = random_split_dataloader(
+    source_train, source_val, target_test, source = random_split_dataloader(
         data=args.data, data_root=args.data_root, source_domain=source_domain, target_domain=target_domain,
         batch_size=args.batch_size, labeled_batch_size=args.labeled_batch_size,  get_domain_label=get_domain_label, get_cluster=get_cluster, num_workers=4,
         color_jitter=args.color_jitter, min_scale=args.min_scale)
@@ -92,6 +98,7 @@ if __name__ == '__main__':
 #     print(num_epoch)
     num_epoch = args.num_epoch
     lr_step = args.lr_step
+    label_batch_size = args.labeled_batch_size
     
     disc_dim = get_disc_dim(args.train, args.clustering, len(source_domain), args.num_clustering)
     
@@ -99,9 +106,10 @@ if __name__ == '__main__':
     # print('no of class :',source_lbl_train_ldr.dataset.num_class)
     # model = get_model(args.model, args.train)(
         # num_classes=source_lbl_train.dataset.dataset.num_class, num_domains=disc_dim, pretrained=True)
+    # model = get_model(args.model, args.train)(
+    #     num_classes=source_train.dataset.dataset.num_class, num_domains=disc_dim, pretrained=True)
     model = get_model(args.model, args.train)(
-        num_classes=source_train.dataset.dataset.num_class, num_domains=disc_dim, pretrained=True)
-    
+        num_classes=source_train.dataset.num_class, num_domains=disc_dim, pretrained=True)
     model = model.to(device)
     reg_model = Purity()
     reg_model = reg_model.to(device)
@@ -148,16 +156,18 @@ if __name__ == '__main__':
         print('Epoch: {}/{}, Lr: {:.6f}'.format(epoch, num_epoch-1, optimizers[0].param_groups[0]['lr']))
         print('Temporary Best Accuracy is {:.4f} ({:.4f} at Epoch {})'.format(test_acc, best_acc, best_epoch))
 
-        dataset = source_train.dataset.dataset
+        #dataset = source_train.dataset.dataset
+        dataset = deepcopy(source)
+        #print("vnf:", type(dataset.clusters))
         if args.clustering:
             if epoch % args.clustering_step == 0:
-                pseudo_lbl_domain_label = domain_split(dataset, model, device=device,
+                pseudo_domain_label = domain_split(dataset, model, device=device,
                                                        cluster_before=dataset.clusters,
                                                        filename=path + '/nmi.txt', epoch=epoch,
                                                        nmb_cluster=args.num_clustering, method=args.clustering_method,
                                                        pca_dim=256, whitening=False, L2norm=False,
                                                        instance_stat=args.instance_stat)
-                dataset.set_cluster(np.array(pseudo_lbl_domain_label))
+                dataset.set_cluster(np.array(pseudo_domain_label))
 
         if args.loss_disc_weight:
             if args.clustering:
@@ -181,7 +191,7 @@ if __name__ == '__main__':
         model, optimizers = get_train(args.train)(model=model,reg_model = reg_model, reg_optimizers=reg_optimizers,
             source_train=source_train, optimizers=optimizers, device=device, epoch=epoch, num_epoch=num_epoch,
             filename=path+'/source_train.txt', entropy=args.entropy, alpha_mixup=args.alpha_mixup, disc_weight=weight,
-            entropy_weight=args.entropy_weight, grl_weight=args.grl_weight)
+            entropy_weight=args.entropy_weight, grl_weight=args.grl_weight, label_batch_size = args.labeled_batch_size)
 
         if epoch % args.eval_step == 0:
             acc = eval_model(model, reg_model, source_val, device, epoch, path+'/source_eval.txt')

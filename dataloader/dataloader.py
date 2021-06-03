@@ -9,39 +9,91 @@ import matplotlib.pyplot as plt
 from torchvision.utils import make_grid
 from torch.utils.data.sampler import Sampler
 import itertools
-def random_split_dataloader (data, data_root, source_domain, target_domain, batch_size, labeled_batch_size,
+from torchvision.datasets.folder import make_dataset, default_loader
+from torchvision import transforms
+from dataloader.Dataset import TransformFix
+def random_split_dataloader(data, data_root, source_domain, target_domain, batch_size, labeled_batch_size,
                    get_domain_label=False, get_cluster=False, num_workers=4, color_jitter=True, min_scale=0.8):
 
     if data=='VLCS': 
         split_rate = 0.7
     else: 
         split_rate = 0.9
+
     source = DG_Dataset(root_dir=data_root, domain=source_domain, split='val',
                                      get_domain_label=False, get_cluster=False, color_jitter=color_jitter, min_scale=min_scale)
-    lbl_indexes, unlbl_indexes = source.lbl_unlbl_indexes()
 
-    seed = 10
-    torch.manual_seed(seed)
-    source_train, source_val = random_split(source, [int(len(source)*split_rate), len(source)-int(len(source)*split_rate)])
-    batch_sampler = TwoStreamBatchSampler(unlbl_indexes, lbl_indexes, batch_size, labeled_batch_size)
+
+    lbl_indexes, unlbl_indexes, val_indices = source.lbl_unlbl_indexes()
+    train_indexes = lbl_indexes + unlbl_indexes
+    train_val_indexes = train_indexes + val_indices
+    # lbl_train = Train_val_data(lbl_indexes, root_dir=data_root, domain=source_domain, split='val')
+    # unlbl_train = Train_val_data(unlbl_indexes, root_dir=data_root, domain=source_domain, split='val')
+    train_val = Train_val_data(train_val_indexes, root_dir=data_root, domain=source_domain, split='val')
+    source_train = Train_val_data(train_indexes, root_dir=data_root, domain=source_domain, split='val')
+    train_lbl_indices = [x for x in range(len(lbl_indexes))]
+    train_unlbl_indices = [x for x in range(len(lbl_indexes), len(train_indexes))]
+    source_train.split='randaugment'
+    source_train.set_transform('randaugment')
+    source_train.get_domain_label = get_domain_label
+    source_train.get_cluster = get_cluster
+
+    #source_train = torch.utils.data.ConcatDataset([lbl_train, unlbl_train])
+
+    source_val = Train_val_data(val_indices, root_dir=data_root, domain=source_domain, split='val')
+    #print("source_val :", (list(source_val)))
+    # trgt = []
+    # for i, data in enumerate(source_val):
+    #     sample_cls = list(source_val)[i][1]
+    #     trgt.append(sample_cls)
+    # print("0 count", trgt.count(0))
+    # print("1 count", trgt.count(1))
+    # print("2 count", trgt.count(2))
+    # print("3 count", trgt.count(3))
+    # print("4 count", trgt.count(4))
+    # print("5 count", trgt.count(5))
+    # print("6 count", trgt.count(6))
+
+    target_test = DG_Dataset(root_dir=data_root, domain=target_domain, split='test',
+                             get_domain_label=False, get_cluster=False)
+    print('Train: {}, Val: {}, Test: {}'.format(len(source_train), len(source_val), len(target_test)))
+    # source_train, source_val = random_split(source, [int(len(source)*split_rate), len(source)-int(len(source)*split_rate)],
+    #                                         generator=torch.Generator().manual_seed(10))
+    #print(dir(source_train))
+    #train_indices = source_train.indices
+    #print("train_indices :", (train_indices))
+    #val_indices = source_val.indices
+    #print("val_indices :", (val_indices))
+    # flag = 0
+    # if (all(x in train_indices for x in lbl_indexes)):
+    #     flag = 1
+    # if (flag):
+    #     print("subset")
+    # else:
+    #     print("not subset")
+
+    batch_sampler = TwoStreamBatchSampler(train_unlbl_indices, train_lbl_indices, batch_size, labeled_batch_size)
 
 
     source_train = deepcopy(source_train)
-    
-    source_train.dataset.split='randaugment'
-    source_train.dataset.set_transform('randaugment')
-    source_train.dataset.get_domain_label = get_domain_label
-    source_train.dataset.get_cluster = get_cluster
 
+    # source_train.dataset.split='randaugment'
+    # source_train.dataset.set_transformation('randaugment')
+    # source_train.dataset.get_domain_label = get_domain_label
+    # source_train.dataset.get_cluster = get_cluster
+
+    #source_train = DataLoader(source_train, batch_size=batch_size, shuffle=True, num_workers=num_workers)
+    source_train = DataLoader(source_train, batch_sampler=batch_sampler, num_workers=0, pin_memory=True)
+
+    #print(("hvdnvlmv:", source_train.dataset.num_class))
 
     target_test =  DG_Dataset(root_dir=data_root, domain=target_domain, split='test',
                                    get_domain_label=False, get_cluster=False)
     
-    print('target_test length :', len(target_test))
-    print('Train: {}, Val: {}, Test: {}'.format(len(source_train), len(source_val), len(target_test)))
+    #print('target_test length :', len(target_test))
+    #print('Train: {}, Val: {}, Test: {}'.format(len(source_train), len(source_val), len(target_test)))
     
-    #source_train = DataLoader(source_train, batch_size=batch_size, shuffle=True, num_workers=num_workers)
-    source_train = DataLoader(source_train, batch_sampler=batch_sampler, num_workers=0, pin_memory=True)
+
     
     # Debugging for augmentation
     # for images, trgt_lbl, dom_lbl in source_lbl_train:
@@ -66,7 +118,7 @@ def random_split_dataloader (data, data_root, source_domain, target_domain, batc
     source_val  = DataLoader(source_val, batch_size=batch_size, shuffle=False, num_workers=num_workers)
     target_test = DataLoader(target_test, batch_size=batch_size, shuffle=False, num_workers=num_workers)
 
-    return source_train, source_val, target_test
+    return source_train, source_val, target_test, train_val
 
 
 class TwoStreamBatchSampler(Sampler):
@@ -113,3 +165,31 @@ def grouper(iterable, n):
     # grouper('ABCDEFG', 3) --> ABC DEF"
     args = [iter(iterable)] * n
     return zip(*args)
+
+
+
+"-----------------------------------------------"
+"Class for train and val set for respective indexes"
+class Train_val_data(DG_Dataset):
+    def __init__(self, indexes, root_dir, domain, split):
+        super(Train_val_data, self).__init__(root_dir, domain, split
+                                             , get_domain_label=False, get_cluster=False, color_jitter=True, min_scale=0.8 )
+        self.indexes = indexes
+        self.dataload()
+
+    def __getitem__(self, index):
+        image_path = self.images[index]
+        image_data = self.loader(image_path)
+        image_data = self.transform(image_data)
+        target = self.clss[index]
+        domain_lbl = self.dom_lbl[index]
+        output_data = [image_data, target]
+        output_data.append(domain_lbl)
+        return  tuple(output_data)
+
+    def dataload(self):
+        image = [s[0] for s in self.total_samples]
+        self.images = [image[idx] for idx in self.indexes]
+        cls = [s[1] for s in self.total_samples]
+        self.clss = [cls[idx] for idx in self.indexes]
+        self.dom_lbl = [self.clusters[idx] for idx in self.indexes]

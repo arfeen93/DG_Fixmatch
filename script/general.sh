@@ -16,7 +16,7 @@ do
 
         do
 
-          dir_name="PACS/default/${domain[3]}${i}"
+          dir_name="PACS/default/${domain[0]}${i}"
           echo $dir_name
           #CUDA_VISIBLE_DEVICES=1 python ../main/main.py \
           python ../main/main.py \
@@ -31,7 +31,7 @@ do
             --num-clustering=3 \
             --clustering-step=1 \
             --entropy='default' \
-            --exp-num=3 \
+            --exp-num=0 \
             --gpu=1 \
             --num-epoch=$epoch_num \
             --scheduler='multistep' \
