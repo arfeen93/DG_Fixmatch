@@ -2,12 +2,12 @@
 
 domain=("photo" "art" "cartoon" "sketch")
 
-times=1
+times=5
 for i in `seq 1 $times`
 do
   max=$((${#domain[@]}-1))
-#  for j in `seq 0 $max`
-#  do
+  for j in `seq 0 $max`
+  do
     for lr_step in 20
     do
       for epoch_num in 50 #100 200 300
@@ -16,7 +16,7 @@ do
 
         do
 
-          dir_name="PACS/default/${domain[0]}${i}"
+          dir_name="PACS/default/${domain[j]}${i}"
           echo $dir_name
           #CUDA_VISIBLE_DEVICES=1 python ../main/main.py \
           python ../main/main.py \
@@ -31,7 +31,7 @@ do
             --num-clustering=3 \
             --clustering-step=1 \
             --entropy='default' \
-            --exp-num=0 \
+            --exp-num=$j \
             --gpu=1 \
             --num-epoch=$epoch_num \
             --scheduler='multistep' \
@@ -51,7 +51,7 @@ do
         done
       done
      done
-  #done
+  done
 done
 
 

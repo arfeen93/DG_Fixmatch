@@ -6,7 +6,7 @@ from numpy.random import *
 import random
 from torch.nn import MSELoss
 
-def eval_model(model,reg_model, eval_data, device, epoch, filename):
+def eval_model(model,reg_model, eval_data, device, epoch, split, filename):
     criterion = nn.CrossEntropyLoss()
     reg_criterion = nn.BCEWithLogitsLoss()
     softmax = nn.Softmax(dim = 1)
@@ -21,64 +21,124 @@ def eval_model(model,reg_model, eval_data, device, epoch, filename):
     running_reg_correct = 0
     # Iterate over data.
     data_num = 0
+    if split=='val':
+        for inputs, labels, dom in eval_data:
+            with torch.no_grad():
+                inputs = inputs.to(device)
+                labels = labels.to(device)
+                # forward
+                outputs = model(inputs)
+                #print("output is :", outputs)
+                #lambda_predict = purity_predict(model, reg_model, inputs, train_lbl_data, lbl_train_data_cls, outputs, device)
+                #reg_values, reg_idx = torch.max(lambda_predict, 1)
+                #lambda_predict_sftmax = softmax(lambda_predict)
+                # lambda_predict_sftmax = torch.sigmoid(lambda_predict)
+                # values, indexes = torch.max(lambda_predict_sftmax, 1)
+                #lambda_predict_cls = torch.round(torch.sigmoid(values))
+                #reg_eval_loss = reg_criterion(reg_values, labels)
+                if isinstance(outputs, tuple):
+                    outputs = outputs[0]
+                loss = criterion(outputs, labels)
+                _, preds = torch.max(outputs, 1)
+                #print("classification pred:", preds)
+                #print("lamda_cls_pred:", lamda_cls_pred)
+                # statistics
+                running_loss += loss.item() * inputs.size(0)
+                #running_reg_loss += reg_eval_loss.item() * inputs.size(0)
+                #for i in range(preds.shape[0]):
+                    #if lamda_cls_pred[i] == preds[i] and preds[i]==labels.data[i]:
+                running_corrects += torch.sum(preds == labels.data).item()
+                #running_reg_correct += torch.sum(values >= 0.9).item()
+                #running_reg_correct += torch.sum(indexes == labels.data).item()
+                        #running_corrects+=1
+                    #if lamda_cls_pred[i] == preds[i] or preds[i] == labels.data[i]:
+                        #running_corrects_new += 1
+                    #if lamda_cls_pred[i] == labels[i]:
+                        #running_corrects_lam_orig +=1
+                #running_corrects_lam_orig += torch.sum(labels.data == lamda_cls_pred.data).item()
+                #running_corrects_pred_orig += torch.sum(preds == labels.data).item()
 
-    for inputs, labels in eval_data:
-        with torch.no_grad():
-            inputs = inputs.to(device)
-            labels = labels.to(device)
-            # forward
-            outputs = model(inputs)
-            #print("output is :", outputs)
-            #lambda_predict = purity_predict(model, reg_model, inputs, train_lbl_data, lbl_train_data_cls, outputs, device)
-            #reg_values, reg_idx = torch.max(lambda_predict, 1)
-            #lambda_predict_sftmax = softmax(lambda_predict)
-            # lambda_predict_sftmax = torch.sigmoid(lambda_predict)
-            # values, indexes = torch.max(lambda_predict_sftmax, 1)
-            #lambda_predict_cls = torch.round(torch.sigmoid(values))
-            #reg_eval_loss = reg_criterion(reg_values, labels)
-            if isinstance(outputs, tuple):
-                outputs = outputs[0]
-            loss = criterion(outputs, labels)
-            _, preds = torch.max(outputs, 1)
-            #print("classification pred:", preds)
-            #print("lamda_cls_pred:", lamda_cls_pred)
-            # statistics
-            running_loss += loss.item() * inputs.size(0)
-            #running_reg_loss += reg_eval_loss.item() * inputs.size(0)
-            #for i in range(preds.shape[0]):
-                #if lamda_cls_pred[i] == preds[i] and preds[i]==labels.data[i]:
-            running_corrects += torch.sum(preds == labels.data).item()
-            #running_reg_correct += torch.sum(values >= 0.9).item()
-            #running_reg_correct += torch.sum(indexes == labels.data).item()
-                    #running_corrects+=1
-                #if lamda_cls_pred[i] == preds[i] or preds[i] == labels.data[i]:
-                    #running_corrects_new += 1
-                #if lamda_cls_pred[i] == labels[i]:
-                    #running_corrects_lam_orig +=1
-            #running_corrects_lam_orig += torch.sum(labels.data == lamda_cls_pred.data).item()
-            #running_corrects_pred_orig += torch.sum(preds == labels.data).item()
+                data_num += inputs.size(0)
+        epoch_loss = running_loss / len(eval_data.dataset)
+        epoch_acc = running_corrects / len(eval_data.dataset)
+        # epoch_reg_Acc = running_reg_correct/len(eval_data.dataset)
+        # epoch_reg_eval_loss = running_reg_loss/ len(eval_data.dataset)
+        # epoch_lam_orig_acc = running_corrects_lam_orig / len(eval_data.dataset)
+        # epoch_lam_or_pred_orig_acc = running_corrects_new/len(eval_data.dataset)
+        # epoch_pred_orig_acc = running_corrects_pred_orig/len(eval_data.dataset)
 
-            data_num += inputs.size(0)
-    epoch_loss = running_loss / len(eval_data.dataset)
-    epoch_acc = running_corrects / len(eval_data.dataset)
-    # epoch_reg_Acc = running_reg_correct/len(eval_data.dataset)
-    # epoch_reg_eval_loss = running_reg_loss/ len(eval_data.dataset)
-    # epoch_lam_orig_acc = running_corrects_lam_orig / len(eval_data.dataset)
-    # epoch_lam_or_pred_orig_acc = running_corrects_new/len(eval_data.dataset)
-    # epoch_pred_orig_acc = running_corrects_pred_orig/len(eval_data.dataset)
+        # if (epoch+1) % 20 == 0:
+        #     print("lambda predicted is :", lambda_predict)
+        #     print("max lambda predicted is :", values)
+        #print("input for eval:", labels)
 
-    # if (epoch+1) % 20 == 0:
-    #     print("lambda predicted is :", lambda_predict)
-    #     print("max lambda predicted is :", values)
-    #print("input for eval:", labels)
+        log = 'Eval: Epoch: {} Loss: {:.4f} Class Acc. : {:.4f}  '\
+            .format(epoch, epoch_loss, epoch_acc) #, Reg Accuracy : {:.4f} epoch_pred_orig_acc,epoch_lam_orig_acc, epoch_lam_or_pred_orig_acc)
+        print(log)
+        with open(filename, 'a') as f:
+            f.write(log + '\n')
+        # tb1.close()
+        return epoch_acc
+    if split=='test':
+        for inputs, labels in eval_data:
+            with torch.no_grad():
+                inputs = inputs.to(device)
+                labels = labels.to(device)
+                # forward
+                outputs = model(inputs)
+                # print("output is :", outputs)
+                # lambda_predict = purity_predict(model, reg_model, inputs, train_lbl_data, lbl_train_data_cls, outputs, device)
+                # reg_values, reg_idx = torch.max(lambda_predict, 1)
+                # lambda_predict_sftmax = softmax(lambda_predict)
+                # lambda_predict_sftmax = torch.sigmoid(lambda_predict)
+                # values, indexes = torch.max(lambda_predict_sftmax, 1)
+                # lambda_predict_cls = torch.round(torch.sigmoid(values))
+                # reg_eval_loss = reg_criterion(reg_values, labels)
+                if isinstance(outputs, tuple):
+                    outputs = outputs[0]
+                loss = criterion(outputs, labels)
+                _, preds = torch.max(outputs, 1)
+                # print("classification pred:", preds)
+                # print("lamda_cls_pred:", lamda_cls_pred)
+                # statistics
+                running_loss += loss.item() * inputs.size(0)
+                # running_reg_loss += reg_eval_loss.item() * inputs.size(0)
+                # for i in range(preds.shape[0]):
+                # if lamda_cls_pred[i] == preds[i] and preds[i]==labels.data[i]:
+                running_corrects += torch.sum(preds == labels.data).item()
+                # running_reg_correct += torch.sum(values >= 0.9).item()
+                # running_reg_correct += torch.sum(indexes == labels.data).item()
+                # running_corrects+=1
+                # if lamda_cls_pred[i] == preds[i] or preds[i] == labels.data[i]:
+                # running_corrects_new += 1
+                # if lamda_cls_pred[i] == labels[i]:
+                # running_corrects_lam_orig +=1
+                # running_corrects_lam_orig += torch.sum(labels.data == lamda_cls_pred.data).item()
+                # running_corrects_pred_orig += torch.sum(preds == labels.data).item()
 
-    log = 'Eval: Epoch: {} Loss: {:.4f} Class Acc. : {:.4f}  '\
-        .format(epoch, epoch_loss, epoch_acc) #, Reg Accuracy : {:.4f} epoch_pred_orig_acc,epoch_lam_orig_acc, epoch_lam_or_pred_orig_acc)
-    print(log)
-    with open(filename, 'a') as f: 
-        f.write(log + '\n')
-    # tb1.close()
-    return epoch_acc   #, epoch_reg_Acc
+                data_num += inputs.size(0)
+        epoch_loss = running_loss / len(eval_data.dataset)
+        epoch_acc = running_corrects / len(eval_data.dataset)
+        # epoch_reg_Acc = running_reg_correct/len(eval_data.dataset)
+        # epoch_reg_eval_loss = running_reg_loss/ len(eval_data.dataset)
+        # epoch_lam_orig_acc = running_corrects_lam_orig / len(eval_data.dataset)
+        # epoch_lam_or_pred_orig_acc = running_corrects_new/len(eval_data.dataset)
+        # epoch_pred_orig_acc = running_corrects_pred_orig/len(eval_data.dataset)
+
+        # if (epoch+1) % 20 == 0:
+        #     print("lambda predicted is :", lambda_predict)
+        #     print("max lambda predicted is :", values)
+        # print("input for eval:", labels)
+
+        log = 'Eval: Epoch: {} Loss: {:.4f} Class Acc. : {:.4f}  ' \
+            .format(epoch, epoch_loss,
+                    epoch_acc)  # , Reg Accuracy : {:.4f} epoch_pred_orig_acc,epoch_lam_orig_acc, epoch_lam_or_pred_orig_acc)
+        print(log)
+        with open(filename, 'a') as f:
+            f.write(log + '\n')
+        # tb1.close()
+        return epoch_acc
+
 
 "Novelty purity predictor---start"
 def purity_predict(model, reg_model, inputs, train_lbl_data, lbl_train_data_cls, outputs, device):

@@ -132,7 +132,7 @@ if __name__ == '__main__':
         reg_scheduler = get_scheduler('multistep')(optimizer=reg_optimizers, milestones=[60, 90, 150, 200],
                                                    gamma=0.1)
     elif args.scheduler == 'multistep':
-        schedulers = [get_scheduler(args.scheduler)(optimizer=opt, milestones =[20, 40, 100, 200], gamma=args.lr_decay_gamma)
+        schedulers = [get_scheduler(args.scheduler)(optimizer=opt, milestones =[40, 80, 150, 280], gamma=args.lr_decay_gamma)
                      for opt in optimizers]
         reg_scheduler = get_scheduler('multistep')(optimizer=reg_optimizers, milestones=[20, 60, 100, 180], gamma=0.1)
         print('multistep scheduler is used')
@@ -194,8 +194,8 @@ if __name__ == '__main__':
             entropy_weight=args.entropy_weight, grl_weight=args.grl_weight, label_batch_size = args.labeled_batch_size)
 
         if epoch % args.eval_step == 0:
-            acc = eval_model(model, reg_model, source_val, device, epoch, path+'/source_eval.txt')
-            acc_ = eval_model(model, reg_model, target_test, device, epoch, path+'/target_test.txt')
+            acc = eval_model(model, reg_model, source_val, device, epoch, 'val', path+'/source_eval.txt')
+            acc_ = eval_model(model, reg_model, target_test, device, epoch,'test', path+'/target_test.txt')
 
         if epoch % args.save_step == 0:
             torch.save(model.state_dict(), os.path.join(
@@ -221,10 +221,10 @@ if __name__ == '__main__':
         #reg_scheduler.step()
 
 
-    best_model = get_model(args.model, args.train)(num_classes=source_lbl_train_ldr.dataset.num_class, num_domains=disc_dim, pretrained=False)
+    best_model = get_model(args.model, args.train)(num_classes=source_train.dataset.num_class, num_domains=disc_dim, pretrained=False)
     best_model.load_state_dict(torch.load(os.path.join(
                 path, 'models',
                 "model_best.pt"), map_location=device))
     best_model = best_model.to(device)
-    test_acc = eval_model(best_model, reg_model, target_test, device, best_epoch, path+'/target_best.txt')
+    test_acc = eval_model(best_model, reg_model, target_test, device, best_epoch, 'test', path+'/target_best.txt')
     print('Test Accuracy by the best model on the source domain is {} (at Epoch {})'.format(test_acc, best_epoch))

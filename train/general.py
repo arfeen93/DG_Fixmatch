@@ -36,6 +36,7 @@ def train(model, reg_model, reg_optimizers, source_train, optimizers,
     running_loss_domain = 0.0
     running_correct_domain = 0
     running_loss_entropy = 0
+    running_loss_total = 0
     batch_samples = 0
     #print(list(source_train)[0])
     for input_x, target_x, domain_lbl  in source_train:
@@ -78,7 +79,9 @@ def train(model, reg_model, reg_optimizers, source_train, optimizers,
         pseudo_labels = F.one_hot(pseudo_labels_mixed, num_classes=7)
         mask_loss_lbl= [True for x in range(len(mask_loss)) if x<label_batch_size]
         mask_loss_lbl = torch.Tensor(mask_loss_lbl)
+        mask_loss_lbl = mask_loss_lbl.to(device)
         mask_loss_unlbl = mask_loss[label_batch_size:]
+        mask_loss_unlbl = mask_loss_unlbl.to(device)
         mask_loss_all = torch.cat((mask_loss_lbl, mask_loss_unlbl), 0)
         #print('pseudo_labels_orig are :', pseudo_labels_orig)
         #s = torch.sum(pseudo_labels_orig==input_lbl)
@@ -221,7 +224,10 @@ def train(model, reg_model, reg_optimizers, source_train, optimizers,
         # running_loss_class += loss_class.item() * inputs.size(0)
         running_loss_class += loss_class.item()
 
-        total_correct_class = torch.sum(pred_class == pseudo_labels_orig.data)
+        #total_correct_class = torch.sum(pred_class == pseudo_labels_mixed.data)
+        total_correct_class = torch.sum(lam * (pred_class==input_clss_lbl.data)) + \
+                              torch.sum((1 - lam) * (pred_class==input_clss_lbl_idx.data))
+        #print(total_correct_class)
         #total_reg_correct_class = torch.sum(lambda_pred_cls == lamdba_gt).item()
 
         running_correct_class += total_correct_class
@@ -231,6 +237,7 @@ def train(model, reg_model, reg_optimizers, source_train, optimizers,
         total_correct_domain = torch.sum(pred_domain == domains_lbl.data)
         running_correct_domain += total_correct_domain
         running_loss_entropy += loss_entropy.item()
+        running_loss_total += total_loss.item()
         #running_reg_loss +=  reg_loss.item()
         batch_samples +=  mixedup.size(0)
 
@@ -242,17 +249,18 @@ def train(model, reg_model, reg_optimizers, source_train, optimizers,
     # print('total unlabelled :', total_unlbl)
     # train_data_len = len(source_lbl_train_ldr.dataset)+len(source_unlbl_train_ldr.dataset)
     total = batch_samples
-
+    epoch_total_loss = running_loss_total/num_epoch
     epoch_loss_class = running_loss_class /num_epoch
     epoch_acc_class = running_correct_class.double() / total
+    #print(epoch_acc_class)
     #epoch_reg_acc_class = running_reg_correct_class/total_unlbl
     #epoch_reg_loss = running_reg_loss /train_step
     epoch_loss_domain = running_loss_domain /num_epoch
     epoch_acc_domain = running_correct_domain.double() / total
     epoch_loss_entropy = running_loss_entropy/num_epoch
     log = 'Train: Epoch: {} Alpha: {:.4f} Loss Class: {:.4f} Acc Class: {:.4f} Loss Domain: {:.4f} Acc Domain: {:.4f} ' \
-          'Loss Entropy: {:.4f} '.format(epoch, alpha, epoch_loss_class, epoch_acc_class, epoch_loss_domain,
-                                     epoch_acc_domain, epoch_loss_entropy, )
+          'Loss Entropy: {:.4f} Total loss:{:.4f} '.format(epoch, alpha, epoch_loss_class, epoch_acc_class, epoch_loss_domain,
+                                     epoch_acc_domain, epoch_loss_entropy, epoch_total_loss)
 
     # log_anthr = 'Train: Epoch: {} Alpha: {:.4f} loss_class_lbl: {:.4f}, mixup_cls_loss: {:.4f} loss_entropy_lbl: {:.4f}' \
     #             ' loss_entropy_unlbl: {:.4f} '.format(epoch, alpha, epoch_loss_class_lbl, epoch_mixup_cls_loss,
