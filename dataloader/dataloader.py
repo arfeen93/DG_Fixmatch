@@ -23,14 +23,17 @@ def random_split_dataloader(data, data_root, source_domain, target_domain, batch
     source = DG_Dataset(root_dir=data_root, domain=source_domain, split='val',
                                      get_domain_label=False, get_cluster=False, color_jitter=color_jitter, min_scale=min_scale)
 
+    #print('get_domain_label:', get_domain_label)
+    #print('get_cluster:', get_cluster)
+
 
     lbl_indexes, unlbl_indexes, val_indices = source.lbl_unlbl_indexes()
     train_indexes = lbl_indexes + unlbl_indexes
     train_val_indexes = train_indexes + val_indices
-    # lbl_train = Train_val_data(lbl_indexes, root_dir=data_root, domain=source_domain, split='val')
-    # unlbl_train = Train_val_data(unlbl_indexes, root_dir=data_root, domain=source_domain, split='val')
-    train_val = Train_val_data(train_val_indexes, root_dir=data_root, domain=source_domain, split='val')
+    #train_val = Train_val_data(train_val_indexes, root_dir=data_root, domain=source_domain, split='val')
     source_train = Train_val_data(train_indexes, root_dir=data_root, domain=source_domain, split='val')
+    source_lbl_train = Train_val_data(lbl_indexes, root_dir=data_root, domain=source_domain, split='val')
+    #print("source_train.clss len:", len(source_train.clss))
     train_lbl_indices = [x for x in range(len(lbl_indexes))]
     train_unlbl_indices = [x for x in range(len(lbl_indexes), len(train_indexes))]
     source_train.split='randaugment'
@@ -38,10 +41,11 @@ def random_split_dataloader(data, data_root, source_domain, target_domain, batch
     source_train.get_domain_label = get_domain_label
     source_train.get_cluster = get_cluster
 
-    #source_train = torch.utils.data.ConcatDataset([lbl_train, unlbl_train])
-
     source_val = Train_val_data(val_indices, root_dir=data_root, domain=source_domain, split='val')
-    #print("source_val :", (list(source_val)))
+    # source_val.split='randaugment'
+    # source_val.set_transform('randaugment')
+
+    #print("source_lbl_train :", list(source_lbl_train))
     # trgt = []
     # for i, data in enumerate(source_val):
     #     sample_cls = list(source_val)[i][1]
@@ -118,7 +122,7 @@ def random_split_dataloader(data, data_root, source_domain, target_domain, batch
     source_val  = DataLoader(source_val, batch_size=batch_size, shuffle=False, num_workers=num_workers)
     target_test = DataLoader(target_test, batch_size=batch_size, shuffle=False, num_workers=num_workers)
 
-    return source_train, source_val, target_test, train_val
+    return source_train, source_lbl_train, source_val, target_test #, train_val
 
 
 class TwoStreamBatchSampler(Sampler):
@@ -142,9 +146,15 @@ class TwoStreamBatchSampler(Sampler):
         return (
             primary_batch + secondary_batch
             for (primary_batch, secondary_batch)
-            in  zip(grouper(primary_iter, self.primary_batch_size),
-                    grouper(secondary_iter, self.secondary_batch_size))
+            in zip(grouper(secondary_iter, self.secondary_batch_size),
+                   grouper(primary_iter, self.primary_batch_size))
         )
+        # return (
+        #     primary_batch + secondary_batch
+        #     for (primary_batch, secondary_batch)
+        #     in  zip(grouper(primary_iter, self.primary_batch_size),
+        #             grouper(secondary_iter, self.secondary_batch_size))
+        # )
 
     def __len__(self):
         return len(self.primary_indices) // self.primary_batch_size
@@ -176,15 +186,26 @@ class Train_val_data(DG_Dataset):
                                              , get_domain_label=False, get_cluster=False, color_jitter=True, min_scale=0.8 )
         self.indexes = indexes
         self.dataload()
+        #clusters=self.clusters
 
     def __getitem__(self, index):
         image_path = self.images[index]
         image_data = self.loader(image_path)
         image_data = self.transform(image_data)
         target = self.clss[index]
-        domain_lbl = self.dom_lbl[index]
+
         output_data = [image_data, target]
-        output_data.append(domain_lbl)
+        if self.get_domain_label:
+            #print("inside self.get_domain_label")
+            domain_lbl = np.copy(self.domains_lbl[index])
+            domain_lbl = np.int64(domain_lbl)
+            output_data.append(domain_lbl)
+        if self.get_cluster:
+            #print("inside self.get_cluster")
+            clusters_lbl = np.copy(self.cluster_lbl[index])
+            clusters_lbl = np.int64(clusters_lbl)
+            output_data.append(clusters_lbl)
+        #print("outputdata:", tuple(output_data))
         return  tuple(output_data)
 
     def dataload(self):
@@ -192,4 +213,7 @@ class Train_val_data(DG_Dataset):
         self.images = [image[idx] for idx in self.indexes]
         cls = [s[1] for s in self.total_samples]
         self.clss = [cls[idx] for idx in self.indexes]
-        self.dom_lbl = [self.clusters[idx] for idx in self.indexes]
+        self.cluster_lbl = [self.clusters[idx] for idx in self.indexes]
+        self.cluster_lbl = np.array(self.cluster_lbl)
+        self.domains_lbl = [self.domains[idx] for idx in self.indexes]
+        self.domains_lbl = np.array(self.domains_lbl)

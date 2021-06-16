@@ -27,10 +27,8 @@ if __name__ == '__main__':
     parser.add_argument('--num-clustering', type=int, default=3)
     parser.add_argument('--clustering-step', type=int, default=1)
     parser.add_argument('--entropy', choices=['default', 'maximum_square'])
-    
     parser.add_argument('--exp-num', type=int, default=0)
-    parser.add_argument('--gpu', type=int, default=0) 
-    
+    parser.add_argument('--gpu', type=int, default=0)
     parser.add_argument('--num-epoch', type=int, default=30)
     parser.add_argument('--eval-step', type=int, default=1)
     parser.add_argument('--save-step', type=int, default=100)
@@ -84,9 +82,10 @@ if __name__ == '__main__':
     get_domain_label, get_cluster = train_to_get_label(args.train, args.clustering)
     print('alpha_mixup is :', args.alpha_mixup)
     print("lr is:", args.lr)
-    print("lr step is:", args.lr_step)
+    #print("lr step is:", args.lr_step)
+    print("labelled batch size:", args.labeled_batch_size)
 
-    source_train, source_val, target_test, source = random_split_dataloader(
+    source_train, source_lbl_train, source_val, target_test = random_split_dataloader(
         data=args.data, data_root=args.data_root, source_domain=source_domain, target_domain=target_domain,
         batch_size=args.batch_size, labeled_batch_size=args.labeled_batch_size,  get_domain_label=get_domain_label, get_cluster=get_cluster, num_workers=4,
         color_jitter=args.color_jitter, min_scale=args.min_scale)
@@ -119,7 +118,7 @@ if __name__ == '__main__':
     optimizers = [get_optimizer( model_part, args.lr * alpha, args.momentum, args.weight_decay,
                                 args.feature_fixed, args.nesterov, per_layer=False) for model_part, alpha in model_lr]
     # print("optimizers:", optimizers)
-    reg_optimizers = reg_optimizer(reg_model, reg_lr=0.0001, momentum=args.momentum, weight_decay=args.weight_decay, nesterov=args.nesterov)
+    reg_optimizers = reg_optimizer(reg_model, reg_lr=0.001, momentum=args.momentum, weight_decay=args.weight_decay, nesterov=args.nesterov)
     # "Regression model optimizer"
 
 
@@ -132,9 +131,9 @@ if __name__ == '__main__':
         reg_scheduler = get_scheduler('multistep')(optimizer=reg_optimizers, milestones=[60, 90, 150, 200],
                                                    gamma=0.1)
     elif args.scheduler == 'multistep':
-        schedulers = [get_scheduler(args.scheduler)(optimizer=opt, milestones =[40, 80, 150, 280], gamma=args.lr_decay_gamma)
+        schedulers = [get_scheduler(args.scheduler)(optimizer=opt, milestones =[150, 280], gamma=args.lr_decay_gamma)
                      for opt in optimizers]
-        reg_scheduler = get_scheduler('multistep')(optimizer=reg_optimizers, milestones=[20, 60, 100, 180], gamma=0.1)
+        reg_scheduler = get_scheduler('multistep')(optimizer=reg_optimizers, milestones=[50, 100, 180], gamma=0.1)
         print('multistep scheduler is used')
     else:
         raise ValueError('Name of scheduler unknown %s' %args.scheduler)
@@ -156,13 +155,13 @@ if __name__ == '__main__':
         print('Epoch: {}/{}, Lr: {:.6f}'.format(epoch, num_epoch-1, optimizers[0].param_groups[0]['lr']))
         print('Temporary Best Accuracy is {:.4f} ({:.4f} at Epoch {})'.format(test_acc, best_acc, best_epoch))
 
-        #dataset = source_train.dataset.dataset
-        dataset = deepcopy(source)
+        dataset = source_train.dataset
+        #dataset = deepcopy(source)
         #print("vnf:", type(dataset.clusters))
         if args.clustering:
             if epoch % args.clustering_step == 0:
                 pseudo_domain_label = domain_split(dataset, model, device=device,
-                                                       cluster_before=dataset.clusters,
+                                                       cluster_before=dataset.cluster_lbl,
                                                        filename=path + '/nmi.txt', epoch=epoch,
                                                        nmb_cluster=args.num_clustering, method=args.clustering_method,
                                                        pca_dim=256, whitening=False, L2norm=False,
@@ -194,8 +193,8 @@ if __name__ == '__main__':
             entropy_weight=args.entropy_weight, grl_weight=args.grl_weight, label_batch_size = args.labeled_batch_size)
 
         if epoch % args.eval_step == 0:
-            acc = eval_model(model, reg_model, source_val, device, epoch, 'val', path+'/source_eval.txt')
-            acc_ = eval_model(model, reg_model, target_test, device, epoch,'test', path+'/target_test.txt')
+            acc = eval_model(model, reg_model, source_val, source_lbl_train, device, epoch, path+'/source_eval.txt')
+            acc_ = eval_model(model, reg_model, target_test, source_lbl_train, device, epoch, path+'/target_test.txt')
 
         if epoch % args.save_step == 0:
             torch.save(model.state_dict(), os.path.join(
@@ -214,11 +213,11 @@ if __name__ == '__main__':
         #     best_reg_acc=reg_acc
 
 
-        # curr_reg_lr = get_reg_lr(reg_optimizers)
-        # print("Current reg model lr :", curr_reg_lr)
+        curr_reg_lr = get_reg_lr(reg_optimizers)
+        print("Current reg model lr :", curr_reg_lr)
         for scheduler in schedulers:
             scheduler.step()
-        #reg_scheduler.step()
+        reg_scheduler.step()
 
 
     best_model = get_model(args.model, args.train)(num_classes=source_train.dataset.num_class, num_domains=disc_dim, pretrained=False)
@@ -226,5 +225,5 @@ if __name__ == '__main__':
                 path, 'models',
                 "model_best.pt"), map_location=device))
     best_model = best_model.to(device)
-    test_acc = eval_model(best_model, reg_model, target_test, device, best_epoch, 'test', path+'/target_best.txt')
+    test_acc = eval_model(best_model, reg_model, target_test, source_lbl_train, device, best_epoch, path+'/target_best.txt')
     print('Test Accuracy by the best model on the source domain is {} (at Epoch {})'.format(test_acc, best_epoch))

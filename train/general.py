@@ -29,8 +29,11 @@ def train(model, reg_model, reg_optimizers, source_train, optimizers,
     beta = (2. / (1. + np.exp(-10 * p)) -1) * entropy_weight
     # print(f"Beta {beta}, Entropy {entropy_weight}, p {p}")
     model.discriminator.set_lambd(alpha)
-    model.train()  # Set model to training mode
-    #reg_model.train()
+    model.train()         # Set model to training mode
+    reg_model.train()     # Set reg model to training mode
+
+    running_reg_loss = 0
+    running_reg_correct_class = 0
     running_loss_class = 0.0
     running_correct_class = 0
     running_loss_domain = 0.0
@@ -56,10 +59,10 @@ def train(model, reg_model, reg_optimizers, source_train, optimizers,
 
         # forward - do pseudo labelling part here
         pred_weak_aug, output_domain = model(input_weak)
-        pred_strong_aug, output_domain = model(input_strong)
+        #pred_strong_aug, output_domain = model(input_strong)
 
         prob_weak_aug = F.softmax(pred_weak_aug, dim=1)
-        prob_strong_aug = F.softmax(pred_strong_aug, dim=1)
+        #prob_strong_aug = F.softmax(pred_strong_aug, dim=1)
 
         # print('value of prob_weak_aug :', (prob_weak_aug))
         # Considering only the examples which have confidence above a certain threshold
@@ -73,6 +76,7 @@ def train(model, reg_model, reg_optimizers, source_train, optimizers,
         # print('count of true mask_loss :', count)
         pseudo_labels_orig = pred_weak_aug.max(axis=1)[1]
         #print("pseudo_labels_orig:", pseudo_labels_orig)
+        #unlabel_batch_size = len(target_x) - label_batch_size
         lbl_target = target_x[:label_batch_size]
         unlbl_pseudo_labels_orig = pseudo_labels_orig[label_batch_size:]
         pseudo_labels_mixed = torch.cat((lbl_target, unlbl_pseudo_labels_orig), 0)
@@ -112,14 +116,14 @@ def train(model, reg_model, reg_optimizers, source_train, optimizers,
         mixedup_output, mixup_output_domain = model(mixedup)
         "Unlabelled data model output---end"
         "Novelty Regressor model data passing--start"
-        # x, x1 = model.features(mixedup)
-        # x2, x3 = model.features(input_strong)
+        x, x1 = model.features(mixedup)
+        x2, x3 = model.features(input_strong)
         # x, x1 = model.features(mixed_input_std)
         # x2, x3 = model.features(input_std)
-        #mixup_unlbl_str_dlr_ftre_cat = torch.cat((x1, x3), 1)
+        mixup_unlbl_str_dlr_ftre_cat = torch.cat((x1, x3), 1)
         #mixup_unlbl_str_dlr_cat = torch.cat((mixedup, input_strong), 1)
-        #lambda_pred = reg_model(mixup_unlbl_str_dlr_ftre_cat)
-        #lambda_pred_cls = torch.round(torch.sigmoid(lambda_pred))
+        lambda_pred = reg_model(mixup_unlbl_str_dlr_ftre_cat)
+        lambda_pred_cls = torch.round(torch.sigmoid(lambda_pred))
 
         #lambda_pred_clss = torch.round(lambda_pred)
         #prob_lambda_pred = F.softmax(lambda_pred, dim = 1)
@@ -142,24 +146,23 @@ def train(model, reg_model, reg_optimizers, source_train, optimizers,
         #for k in range(len(input_clss_lbl)):
         #print("input class lbl:", input_clss_lbl)
         #print("input class lbl idx:", input_clss_lbl_idx)
-        # "Novelty regressor part---start"
-        # lamdba_gt = [1 if input_clss_lbl[k]==input_clss_lbl_idx[k] else 0 for k in range(len(input_clss_lbl))]
+        "Novelty regressor part---start"
+        lamdba_gt = [1 if input_clss_lbl[k]==input_clss_lbl_idx[k] else 0 for k in range(len(input_clss_lbl))]
         # #lamdba_gt = [1 if input_clss_lbl_reg[k]==input_clss_lbl_idx_reg[k] else lam for k in range(len(input_clss_lbl_reg))]
-        # lamdba_gt = torch.Tensor(lamdba_gt)
+        lamdba_gt = torch.Tensor(lamdba_gt)
         # #print("lambda_gt is:", lamdba_gt)
-        # lamdba_gt = lamdba_gt.reshape(lamdba_gt.shape[0], 1)
-        # lamdba_gt = lamdba_gt.to(device)
+        lamdba_gt = lamdba_gt.reshape(lamdba_gt.shape[0], 1)
+        lamdba_gt = lamdba_gt.to(device)
 
         # abs_reg_loss = torch.abs(lamdba_gt - lambda_pred)
         # rel_reg_loss_ratio = torch.div(abs_reg_loss, lamdba_gt)
         # "--------End"
-        #print("lambda ground truth is :", lamdba_gt)
-        # if (epoch+1)%10==0:
-        #      if batch_idx==2 or batch_idx==5:
-        #         print("lambda ground truth is :", lamdba_gt)
-        #         print("training lambda predicted class is :", lambda_pred_cls)
-        # "Novelty Regressor loss--start"
-        # reg_loss = reg_criterion(lambda_pred, lamdba_gt)
+        if (epoch+1)%10==0:
+             if batch_idx==2 or batch_idx==5:
+                print("lambda ground truth is :", lamdba_gt)
+                print("training lambda predicted class is :", lambda_pred_cls)
+        "Novelty Regressor loss--start"
+        reg_loss = reg_criterion(lambda_pred, lamdba_gt)
         #lambda_correct = torch.max(lambda_pred, 1)
         # mse_loss = MSELoss()  # noveltrain.out is without reduction="sum"
         # reg_loss = mse_loss(lambda_pred, lamdba_gt)
@@ -193,7 +196,7 @@ def train(model, reg_model, reg_optimizers, source_train, optimizers,
         # _, lbl_pred_class = torch.max(output_class, 1)
         # _, lbl_pred_domain = torch.max(output_domain, 1)
         #print("inputs:", list(inputs))
-        "labelled data giving correct predictions--start"
+        #"labelled data giving correct predictions--start"
         # if batch_idx<4:
         #     inputs_reshaped = F.interpolate(inputs, size = 224)
         #     #print("inputs_reshaped size is :", inputs_reshaped.size())
@@ -207,19 +210,19 @@ def train(model, reg_model, reg_optimizers, source_train, optimizers,
         #     lbl_data_correct_pred_cls = torch.stack(lbl_data_correct_pred_cls)
 
 
-        "labelled data giving correct predictions -- end"
+        #"labelled data giving correct predictions -- end"
         _, pred_class = torch.max(mixedup_output, 1)
         _, pred_domain = torch.max(mixup_output_domain, 1)
         # print('beta in total loss :', beta)
 
-        total_loss =   loss_class + loss_domain + loss_entropy * beta # + reg_loss
+        total_loss =   loss_class + loss_domain + loss_entropy * beta
         # zero the parameter gradients
 
         total_loss.backward()
-        #reg_loss.backward()
+        reg_loss.backward()
         for optimizer in optimizers:
             optimizer.step()
-        #reg_optimizers.step()
+        reg_optimizers.step()
 
         # running_loss_class += loss_class.item() * inputs.size(0)
         running_loss_class += loss_class.item()
@@ -228,17 +231,18 @@ def train(model, reg_model, reg_optimizers, source_train, optimizers,
         total_correct_class = torch.sum(lam * (pred_class==input_clss_lbl.data)) + \
                               torch.sum((1 - lam) * (pred_class==input_clss_lbl_idx.data))
         #print(total_correct_class)
-        #total_reg_correct_class = torch.sum(lambda_pred_cls == lamdba_gt).item()
+        total_reg_correct_class = torch.sum(lambda_pred_cls == lamdba_gt).item()
 
         running_correct_class += total_correct_class
-        #running_reg_correct_class += total_reg_correct_class
+        running_reg_correct_class += total_reg_correct_class
         running_loss_domain += loss_domain.item()
         # running_loss_domain += loss_domain.item()
-        total_correct_domain = torch.sum(pred_domain == domains_lbl.data)
+        total_correct_domain = torch.sum(lam * (pred_domain==unlbl_dom.data)) + \
+                               torch.sum((1 - lam) * (pred_domain==unlbl_dom_idx.data))
         running_correct_domain += total_correct_domain
         running_loss_entropy += loss_entropy.item()
         running_loss_total += total_loss.item()
-        #running_reg_loss +=  reg_loss.item()
+        running_reg_loss +=  reg_loss.item()
         batch_samples +=  mixedup.size(0)
 
 
@@ -252,22 +256,24 @@ def train(model, reg_model, reg_optimizers, source_train, optimizers,
     epoch_total_loss = running_loss_total/num_epoch
     epoch_loss_class = running_loss_class /num_epoch
     epoch_acc_class = running_correct_class.double() / total
-    #print(epoch_acc_class)
-    #epoch_reg_acc_class = running_reg_correct_class/total_unlbl
-    #epoch_reg_loss = running_reg_loss /train_step
+
+    epoch_reg_acc_class = running_reg_correct_class/total
+    epoch_reg_loss = running_reg_loss /num_epoch
     epoch_loss_domain = running_loss_domain /num_epoch
     epoch_acc_domain = running_correct_domain.double() / total
     epoch_loss_entropy = running_loss_entropy/num_epoch
     log = 'Train: Epoch: {} Alpha: {:.4f} Loss Class: {:.4f} Acc Class: {:.4f} Loss Domain: {:.4f} Acc Domain: {:.4f} ' \
           'Loss Entropy: {:.4f} Total loss:{:.4f} '.format(epoch, alpha, epoch_loss_class, epoch_acc_class, epoch_loss_domain,
                                      epoch_acc_domain, epoch_loss_entropy, epoch_total_loss)
-
+    reg_log = 'Train: Epoch: {} Reg Loss: {:.4f} Reg Accuracy: {:.4f}  \
+          '.format(epoch, epoch_reg_loss, epoch_reg_acc_class)
+    #print("sdlvhsbskdosbvnv")
     # log_anthr = 'Train: Epoch: {} Alpha: {:.4f} loss_class_lbl: {:.4f}, mixup_cls_loss: {:.4f} loss_entropy_lbl: {:.4f}' \
     #             ' loss_entropy_unlbl: {:.4f} '.format(epoch, alpha, epoch_loss_class_lbl, epoch_mixup_cls_loss,
     #                                  epoch_loss_entropy_lbl, epoch_loss_entropy_unlbl)
     print(log)
+    print(reg_log)
     print('----------------------------')
-    #print(log_anthr)
     with open(filename, 'a') as f: 
         f.write(log + '\n') 
     return model, optimizers
@@ -344,7 +350,10 @@ def mixup(device, input_strong_ldr, input_clss_lbl, unlbl_domains, alpha_mixup, 
 
 
 
-
+'''TODO
+Make the labelled index based on indices_final.pt..This index was used in earlier method with two dataloader.I have to try with this indexes.
+Dated 13/06/21 
+'''
 
 
 

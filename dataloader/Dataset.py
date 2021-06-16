@@ -169,7 +169,7 @@ class DG_Dataset(Dataset):
         classes, class_to_idx = self.find_classes(self.root_dir + self.domain[0] + '/')
         self.num_class = len(classes)
 
-        indice = torch.load('/home/arfeen/papers_code/dom_gen_aaai_2020/dg_mmld-master/indices_final_170_june2021.pt')['indices']
+        indice = torch.load('/home/arfeen/papers_code/dom_gen_aaai_2020/dg_mmld-master/indices_final.pt')['indices']
         # print(indice)
         #print("domains are:", self.domain)
         # indices_mixed = torch.load ('/home/arfeen/papers_code/dom_gen_aaai_2020/saved-indices/mixed_domain_clustering_indices_all_indices.pt')['indices']
@@ -198,6 +198,10 @@ class DG_Dataset(Dataset):
         unlbl_train_indices = [x for x in all_unlbl_indices if x not in val_indices]
 
         return all_lbl_indices,  unlbl_train_indices, val_indices
+
+
+
+
 
 
 

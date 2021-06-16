@@ -81,10 +81,10 @@ class DGcaffenet(nn.Module):
         return output_class, output_domain
 
     def features(self, x):
-        x = self.base_model.features(x*57.6)
+        x = x0 = self.base_model.features(x*57.6)
         x = x.view(x.size(0), 256 * 6 * 6)
         x = self.base_model.classifier(x)
-        return x
+        return x, x0
 
     def conv_features(self, x) :
         results = []

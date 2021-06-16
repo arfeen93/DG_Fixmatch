@@ -93,22 +93,28 @@ def domain_split(dataset, model, device, cluster_before, filename, epoch, nmb_cl
 
     clustering_loss = cluster_method.cluster(features, verbose=False)
     cluster_list = arrange_clustering(cluster_method.images_lists)
+    # print("cluster_list len :", len(cluster_list))
+    # print("dataloader.dataset len :", len(dataset))
+    # print("dataloader.dataset.labels len :", len(dataloader.dataset.clss))
 
     class_nmi = normalized_mutual_info_score(
-        cluster_list, dataloader.dataset.labels, average_method='geometric')
+        cluster_list, dataloader.dataset.clss, average_method='geometric')
 
     domain_nmi = normalized_mutual_info_score(
-        cluster_list, dataloader.dataset.domains, average_method='geometric')
+        cluster_list, dataloader.dataset.domains_lbl, average_method='geometric')
 
     before_nmi = normalized_mutual_info_score(
         cluster_list, cluster_before, average_method='arithmetic')
+    print("before_nmi:", before_nmi)
 
     log = 'Epoch: {}, NMI against class labels: {:.3f}, domain labels: {:.3f}, previous assignment: {:.3f}'.format(epoch, class_nmi, domain_nmi, before_nmi)
     print(log)
     if filename:
         with open(filename, 'a') as f:
             f.write(log + '\n')
-        
+
+    # print("cluster_before type:", type(cluster_before))
+    # print("cluster_list type:", type(cluster_list))
     mapping = reassign(cluster_before, cluster_list)
     cluster_reassign = [cluster_method.images_lists[mapp] for mapp in mapping]
     dataset.set_transform(dataset.split)
