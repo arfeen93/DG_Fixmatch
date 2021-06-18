@@ -15,7 +15,7 @@
     </option>
   </component>
   <component name="Git.Settings">
-    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$/train" />
+    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
   </component>
   <component name="JupyterTrust" id="532f4f29-671a-49d3-8c9a-d23156d4a15d" />
   <component name="ProjectId" id="1mFDxXpjqpcoOqkQkpW8Csgnl1z" />
@@ -101,7 +101,7 @@
       <workItem from="1621744077060" duration="31735000" />
       <workItem from="1621844086417" duration="40879000" />
       <workItem from="1622532492855" duration="120628000" />
-      <workItem from="1623343113865" duration="38752000" />
+      <workItem from="1623343113865" duration="51884000" />
     </task>
     <servers />
   </component>

@@ -6,9 +6,11 @@ from numpy.random import *
 import random
 from torch.nn import MSELoss
 
+
 def eval_model(model,reg_model, eval_data, train_lbl_data, device, epoch, filename):
     criterion = nn.CrossEntropyLoss()
     reg_criterion = nn.BCEWithLogitsLoss()      # Loss function for Regressor
+    sigmoid = nn.Sigmoid()
     softmax = nn.Softmax(dim = 1)
     model.eval()  # Set model to eval mode
     reg_model.eval() # Set regressor model to eval mode
@@ -19,7 +21,9 @@ def eval_model(model,reg_model, eval_data, train_lbl_data, device, epoch, filena
     running_reg_class_correct = 0
     # Iterate over data.
     data_num = 0
+    idx = 0
     for inputs, labels in eval_data:
+        idx+=1
         with torch.no_grad():
 
             inputs = inputs.to(device)
@@ -28,9 +32,13 @@ def eval_model(model,reg_model, eval_data, train_lbl_data, device, epoch, filena
             outputs = model(inputs)
             # print("output is :", outputs)
             lambda_predict = purity_predict(model, reg_model, inputs, train_lbl_data, outputs, device)
-            reg_values, reg_idx = torch.max(lambda_predict, 1)
+
+            #reg_values, reg_idx = torch.max(lambda_predict, 1)
             # lambda_predict_sftmax = softmax(lambda_predict)
-            lambda_predict_sigmoid = torch.sigmoid(lambda_predict)
+            lambda_predict_sigmoid = sigmoid(lambda_predict)
+            if (epoch+1)%10==0:
+                if idx ==2 or idx==5:
+                    print('lambda_pred sigmoid for eval:', lambda_predict_sigmoid)
             values, indexes = torch.max(lambda_predict_sigmoid, 1)
             lambda_predict_cls = torch.round(torch.sigmoid(values))
             #reg_eval_loss = long(reg_eval_loss)
@@ -135,7 +143,7 @@ def purity_predict(model, reg_model, inputs, train_lbl_data, outputs, device):
         #lambda_predict0_cls = torch.round(torch.sigmoid(lambda_predict0))
         lambda_predict0=lambda_predict0.reshape(lambda_predict0.size(0), 1)
         lambda_predict = torch.cat((lambda_predict, lambda_predict0), 1)
-        return lambda_predict
+    return lambda_predict
     #print("all 7 lambda predicted are:", lambda_predict)
 #
 #

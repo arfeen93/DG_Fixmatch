@@ -41,9 +41,11 @@ def train(model, reg_model, reg_optimizers, source_train, optimizers,
     running_loss_entropy = 0
     running_loss_total = 0
     batch_samples = 0
+    batch_idx = 0
     #print(list(source_train)[0])
     for input_x, target_x, domain_lbl  in source_train:
         #print("lndbsvbdkjvd")
+        batch_idx+=1
         input_weak = input_x[0]
         input_strong = input_x[1]
         input_std = input_x[2]
@@ -55,7 +57,7 @@ def train(model, reg_model, reg_optimizers, source_train, optimizers,
 
         for optimizer in optimizers:
             optimizer.zero_grad()
-        #reg_optimizers.zero_grad()
+        reg_optimizers.zero_grad()
 
         # forward - do pseudo labelling part here
         pred_weak_aug, output_domain = model(input_weak)
@@ -158,9 +160,10 @@ def train(model, reg_model, reg_optimizers, source_train, optimizers,
         # rel_reg_loss_ratio = torch.div(abs_reg_loss, lamdba_gt)
         # "--------End"
         if (epoch+1)%10==0:
-             if batch_idx==2 or batch_idx==5:
+            if batch_idx==2 or batch_idx==5:
                 print("lambda ground truth is :", lamdba_gt)
                 print("training lambda predicted class is :", lambda_pred_cls)
+
         "Novelty Regressor loss--start"
         reg_loss = reg_criterion(lambda_pred, lamdba_gt)
         #lambda_correct = torch.max(lambda_pred, 1)
