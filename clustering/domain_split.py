@@ -78,6 +78,7 @@ def domain_split(dataset, model, device, cluster_before, filename, epoch, nmb_cl
     cluster_method = clustering.__dict__[method](nmb_cluster, pca_dim, whitening, L2norm)
 
     dataset.set_transform('val')
+    #dataset.set_transform('randaugment')
 
     dataloader = DataLoader(dataset, batch_size=batchsize, shuffle=False, num_workers=num_workers)
 
@@ -93,7 +94,7 @@ def domain_split(dataset, model, device, cluster_before, filename, epoch, nmb_cl
 
     clustering_loss = cluster_method.cluster(features, verbose=False)
     cluster_list = arrange_clustering(cluster_method.images_lists)
-    # print("cluster_list len :", len(cluster_list))
+    print("cluster_list len :", len(cluster_list))
     # print("dataloader.dataset len :", len(dataset))
     # print("dataloader.dataset.labels len :", len(dataloader.dataset.clss))
 

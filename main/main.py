@@ -157,7 +157,7 @@ if __name__ == '__main__':
 
         dataset = source_train.dataset
         #dataset = deepcopy(source)
-        #print("vnf:", type(dataset.clusters))
+        print("vnf:", (dataset.clusters))
         if args.clustering:
             if epoch % args.clustering_step == 0:
                 pseudo_domain_label = domain_split(dataset, model, device=device,

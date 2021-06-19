@@ -11,6 +11,7 @@ import random
 from torchvision.utils import save_image
 import matplotlib.pyplot as plt
 from torchvision.utils import make_grid
+from copy import deepcopy
 
 
 def train(model, reg_model, reg_optimizers, source_train, optimizers,
@@ -151,6 +152,7 @@ def train(model, reg_model, reg_optimizers, source_train, optimizers,
         "Novelty regressor part---start"
         lamdba_gt = [1 if input_clss_lbl[k]==input_clss_lbl_idx[k] else 0 for k in range(len(input_clss_lbl))]
         # #lamdba_gt = [1 if input_clss_lbl_reg[k]==input_clss_lbl_idx_reg[k] else lam for k in range(len(input_clss_lbl_reg))]
+        #print('count of same clss mixup:', lamdba_gt.count(1))
         lamdba_gt = torch.Tensor(lamdba_gt)
         # #print("lambda_gt is:", lamdba_gt)
         lamdba_gt = lamdba_gt.reshape(lamdba_gt.shape[0], 1)
@@ -332,15 +334,72 @@ def mixup(device, input_strong_ldr, input_clss_lbl, unlbl_domains, alpha_mixup, 
     # mixed_input_ldr = lam * input_strong_ldr + (1 - lam) * all_lbl_images_order
     """mixup of same class--- end"""
     """mixup irrespective of classes(as per paper code)--- start"""
-    index = torch.randperm(len(input_strong_ldr))
-    index = index.to(device)
+    #index = torch.randperm(len(input_strong_ldr))
+    #index = index.to(device)
     #print("index is:", index)
-    input_clss_lbl_idx = input_clss_lbl[index]
-    unlbl_domains_idx = unlbl_domains[index]
-    mask_loss_all_idx = mask_loss_all[index]
+    # input_clss_lbl_idx = input_clss_lbl[index]
+    # unlbl_domains_idx = unlbl_domains[index]
+    # mask_loss_all_idx = mask_loss_all[index]
+    "dataloader changes for regression problem --start"
+    input_clss_lbl_permute = deepcopy(input_clss_lbl)
+    unlbl_domains_permute = deepcopy(unlbl_domains)
+    input_strong_ldr_permute = deepcopy(input_strong_ldr)
+    mask_loss_all_permute = deepcopy(mask_loss_all)
+    used_idx = []
+    for j in range(7):
+        clss_wise_idx = [i for i,x in enumerate(input_clss_lbl) if x==j]
+        diff_clss_idx = [i for i,x in enumerate(input_clss_lbl) if x!=j]
+        remained_diff_clss_idx = [idx for idx in diff_clss_idx if idx not in used_idx]
+        #print('diff_clss_idx len:', len(diff_clss_idx))
+
+        # sorting both the lists
+        #print('clss_wise_idx:', clss_wise_idx)
+        #print('diff_clss_idx:', diff_clss_idx)
+        same_cls_mix_len = int(len(clss_wise_idx) / 2)
+        clss_wise_first_hlf_idx = clss_wise_idx[:same_cls_mix_len]
+        clss_wise_secnd_hlf_idx = clss_wise_idx[same_cls_mix_len:]
+        #print('clss_wise_secnd_hlf_idx before permute:', clss_wise_secnd_hlf_idx)
+        clss_wise_first_hlf_idx_permute = random.sample(clss_wise_first_hlf_idx, len(clss_wise_first_hlf_idx))
+        clss_wise_scnd_hlf_idx_permute = random.sample(remained_diff_clss_idx, len(clss_wise_secnd_hlf_idx))
+        used_idx.extend(clss_wise_scnd_hlf_idx_permute)
+        #print('used_idx:', used_idx)
+        #print('clss_wise_scnd_hlf_idx_permute after permute:', clss_wise_scnd_hlf_idx_permute)
+        "Same class shuffling"
+        input_clss_lbl_permute[clss_wise_first_hlf_idx] = input_clss_lbl_permute[clss_wise_first_hlf_idx_permute]
+        unlbl_domains_permute[clss_wise_first_hlf_idx] = unlbl_domains_permute[clss_wise_first_hlf_idx_permute]
+        input_strong_ldr_permute[clss_wise_first_hlf_idx] = input_strong_ldr_permute[clss_wise_first_hlf_idx_permute]
+        mask_loss_all_permute[clss_wise_first_hlf_idx] = mask_loss_all_permute[clss_wise_first_hlf_idx_permute]
+
+        "Irrespective or Diff class shuffling"
+        input_clss_lbl_permute[clss_wise_secnd_hlf_idx] = input_clss_lbl_permute[clss_wise_scnd_hlf_idx_permute]
+        unlbl_domains_permute[clss_wise_secnd_hlf_idx] = unlbl_domains_permute[clss_wise_scnd_hlf_idx_permute]
+        input_strong_ldr_permute[clss_wise_secnd_hlf_idx] = input_strong_ldr_permute[clss_wise_scnd_hlf_idx_permute]
+        mask_loss_all_permute[clss_wise_secnd_hlf_idx] = mask_loss_all_permute[clss_wise_scnd_hlf_idx_permute]
+        #print('input_strong_ldr before permute of same clss: ', input_strong_ldr[17])
+        #print('input_strong_ldr after permute of same clss: ', input_strong_ldr[17])
+    "dataloader changes for regression problem --end"
+    # listA = input_clss_lbl.tolist()
+    # listB = input_clss_lbl_permute.tolist()
+    # res = [idx for idx, elem in enumerate(listB)
+    #        if elem != listA[idx]]
+    # print('res:', res)
+    # print('input_clss_lbl before permute of same clss:', input_strong_ldr[res[0]])
+    # print('input_clss_lbl after permute of same clss:', input_clss_lbl_permute[res[0]])
+
+    # for j in range(7):
+    #     diff_cls_mix_len[j] = len(clss_wise_idx[j]) - same_cls_mix_len[j]
+    #     diff_clss_hlf_idx = clss_wise_idx[j][same_cls_mix_len[j]:]
+
+
+
+
+
+    #print('clss_wise_idx:', clss_wise_idx)
+
     #print('input_strong_ldr size is :', input_strong_ldr.size())
     #mixed_input_ldr = lam * input_strong_ldr + (1-lam) * input_strong_ldr[index, :]
-    mixed_input_ldr = lam_batch_unsqeeze * input_strong_ldr + (1. - lam_batch_unsqeeze) * input_strong_ldr[index, :]
+    #mixed_input_ldr = lam_batch_unsqeeze * input_strong_ldr + (1. - lam_batch_unsqeeze) * input_strong_ldr[index, :]
+    mixed_input_ldr = lam_batch_unsqeeze * input_strong_ldr + (1. - lam_batch_unsqeeze) * input_strong_ldr_permute
 
     #concat_input = torch.cat((mixed_input_ldr, input_strong_ldr), 0)
 
@@ -348,8 +407,8 @@ def mixup(device, input_strong_ldr, input_clss_lbl, unlbl_domains, alpha_mixup, 
 
     # lbl_dom, unlbl_dom = lbl_domain_order, unlbl_domains
     # lbl_dom = lbl_dom.to(device)
-    return mixed_input_ldr, input_clss_lbl, input_clss_lbl_idx, unlbl_domains, unlbl_domains_idx, mask_loss_all_idx, lam_batch
-
+    #return mixed_input_ldr, input_clss_lbl, input_clss_lbl_idx, unlbl_domains, unlbl_domains_idx, mask_loss_all_idx, lam_batch
+    return mixed_input_ldr, input_clss_lbl, input_clss_lbl_permute, unlbl_domains, unlbl_domains_permute, mask_loss_all_permute, lam_batch
 
 
 

@@ -97,7 +97,7 @@ def purity_predict(model, reg_model, inputs, train_lbl_data, outputs, device):
 
     all_train_data = []
     all_target = []
-#     outputs_cls=outputs[0]
+    #outputs_cls=outputs[0]
     #top3_logit = torch.topk(outputs_cls, 3)
     #print('top3_logit:', top3_logit)
     #top3_class = top3_logit[1]
