@@ -14,7 +14,7 @@ from torchvision.utils import make_grid
 from copy import deepcopy
 
 
-def train(model, reg_model, reg_optimizers, source_train, optimizers,
+def train(model, source_train, optimizers,
           device, epoch, num_epoch, filename, entropy, alpha_mixup, disc_weight=None, entropy_weight=1.0, grl_weight=1.0, label_batch_size=50):
     class_criterion = nn.CrossEntropyLoss(reduction='mean')
     reg_criterion = nn.BCEWithLogitsLoss()
@@ -31,7 +31,7 @@ def train(model, reg_model, reg_optimizers, source_train, optimizers,
     # print(f"Beta {beta}, Entropy {entropy_weight}, p {p}")
     model.discriminator.set_lambd(alpha)
     model.train()         # Set model to training mode
-    reg_model.train()     # Set reg model to training mode
+    #reg_model.train()     # Set reg model to training mode
 
     running_reg_loss = 0
     running_reg_correct_class = 0
@@ -116,16 +116,16 @@ def train(model, reg_model, reg_optimizers, source_train, optimizers,
         mixedup = mixedup.to(device)
 
         "Unlabelled data model output---start"
-        mixedup_output, mixup_output_domain = model(mixedup)
+        mixedup_output, mixup_output_domain, lambda_pred = model(mixedup, input_strong)
         "Unlabelled data model output---end"
         "Novelty Regressor model data passing--start"
-        x, x1 = model.features(mixedup)
-        x2, x3 = model.features(input_strong)
+        #x, x1 = model.features(mixedup)
+        #x2, x3 = model.features(input_strong)
         # x, x1 = model.features(mixed_input_std)
         # x2, x3 = model.features(input_std)
-        mixup_unlbl_str_dlr_ftre_cat = torch.cat((x1, x3), 1)
+        #mixup_unlbl_str_dlr_ftre_cat = torch.cat((x1, x3), 1)
         #mixup_unlbl_str_dlr_cat = torch.cat((mixedup, input_strong), 1)
-        lambda_pred = reg_model(mixup_unlbl_str_dlr_ftre_cat)
+        #lambda_pred = (mixup_unlbl_str_dlr_ftre_cat)
         lambda_pred_cls = torch.round(torch.sigmoid(lambda_pred))
 
         #lambda_pred_clss = torch.round(lambda_pred)
@@ -220,14 +220,13 @@ def train(model, reg_model, reg_optimizers, source_train, optimizers,
         _, pred_domain = torch.max(mixup_output_domain, 1)
         # print('beta in total loss :', beta)
 
-        total_loss =   loss_class + loss_domain + loss_entropy * beta
+        total_loss =   loss_class + loss_domain + reg_loss + loss_entropy * beta
         # zero the parameter gradients
 
         total_loss.backward()
-        reg_loss.backward()
         for optimizer in optimizers:
             optimizer.step()
-        reg_optimizers.step()
+        #reg_optimizers.step()
 
         # running_loss_class += loss_class.item() * inputs.size(0)
         running_loss_class += loss_class.item()

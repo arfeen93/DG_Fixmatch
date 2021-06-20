@@ -110,15 +110,15 @@ if __name__ == '__main__':
     model = get_model(args.model, args.train)(
         num_classes=source_train.dataset.num_class, num_domains=disc_dim, pretrained=True)
     model = model.to(device)
-    reg_model = Purity()
-    reg_model = reg_model.to(device)
+    # reg_model = Purity()
+    # reg_model = reg_model.to(device)
     #print('model is :', model)
-    model_lr = get_model_lr(args.model, args.train, model, reg_model,  fc_weight=args.fc_weight, disc_weight=args.disc_weight)
+    model_lr = get_model_lr(args.model, args.train, model,  fc_weight=args.fc_weight, disc_weight=args.disc_weight)
     # print("model lr:", model_lr)
     optimizers = [get_optimizer( model_part, args.lr * alpha, args.momentum, args.weight_decay,
                                 args.feature_fixed, args.nesterov, per_layer=False) for model_part, alpha in model_lr]
     # print("optimizers:", optimizers)
-    reg_optimizers = reg_optimizer(reg_model, reg_lr=0.0001, momentum=args.momentum, weight_decay=args.weight_decay, nesterov=args.nesterov)
+    #reg_optimizers = reg_optimizer(reg_model, reg_lr=0.01, momentum=args.momentum, weight_decay=args.weight_decay, nesterov=args.nesterov)
     # "Regression model optimizer"
 
 
@@ -128,13 +128,13 @@ if __name__ == '__main__':
     elif args.scheduler == 'step':
         schedulers = [get_scheduler(args.scheduler)(optimizer=opt, step_size=lr_step, gamma=args.lr_decay_gamma)
                      for opt in optimizers]
-        reg_scheduler = get_scheduler('multistep')(optimizer=reg_optimizers, milestones=[60, 90, 150, 200],
-                                                   gamma=0.1)
+        # reg_scheduler = get_scheduler('multistep')(optimizer=reg_optimizers, milestones=[60, 90, 150, 200],
+        #                                            gamma=0.1)
     elif args.scheduler == 'multistep':
         schedulers = [get_scheduler(args.scheduler)(optimizer=opt, milestones =[150, 280], gamma=args.lr_decay_gamma)
                      for opt in optimizers]
-        reg_scheduler = get_scheduler('multistep')(optimizer=reg_optimizers, milestones=[ 100, 180], gamma=0.1)
-        print('multistep scheduler is used')
+        # reg_scheduler = get_scheduler('multistep')(optimizer=reg_optimizers, milestones=[ 100, 180], gamma=0.1)
+        # print('multistep scheduler is used')
     else:
         raise ValueError('Name of scheduler unknown %s' %args.scheduler)
 
@@ -187,14 +187,14 @@ if __name__ == '__main__':
 
         # print('weight :', weight)
         # print('unlbl_weight :', unlbl_weight)
-        model, optimizers = get_train(args.train)(model=model,reg_model = reg_model, reg_optimizers=reg_optimizers,
-            source_train=source_train, optimizers=optimizers, device=device, epoch=epoch, num_epoch=num_epoch,
-            filename=path+'/source_train.txt', entropy=args.entropy, alpha_mixup=args.alpha_mixup, disc_weight=weight,
-            entropy_weight=args.entropy_weight, grl_weight=args.grl_weight, label_batch_size = args.labeled_batch_size)
+        model, optimizers = get_train(args.train)(model=model,source_train=source_train, optimizers=optimizers, device=device,
+                            epoch=epoch, num_epoch=num_epoch,filename=path+'/source_train.txt', entropy=args.entropy,
+                            alpha_mixup=args.alpha_mixup, disc_weight=weight,entropy_weight=args.entropy_weight,
+                                                  grl_weight=args.grl_weight, label_batch_size = args.labeled_batch_size)
 
         if epoch % args.eval_step == 0:
-            acc = eval_model(model, reg_model, source_val, source_lbl_train, device, epoch, path+'/source_eval.txt')
-            acc_ = eval_model(model, reg_model, target_test, source_lbl_train, device, epoch, path+'/target_test.txt')
+            acc = eval_model(model, source_val, source_lbl_train, device, epoch, path+'/source_eval.txt')
+            acc_ = eval_model(model, target_test, source_lbl_train, device, epoch, path+'/target_test.txt')
 
         if epoch % args.save_step == 0:
             torch.save(model.state_dict(), os.path.join(
@@ -213,11 +213,11 @@ if __name__ == '__main__':
         #     best_reg_acc=reg_acc
 
 
-        curr_reg_lr = get_reg_lr(reg_optimizers)
-        print("Current reg model lr :", curr_reg_lr)
+        # curr_reg_lr = get_reg_lr(reg_optimizers)
+        # print("Current reg model lr :", curr_reg_lr)
         for scheduler in schedulers:
             scheduler.step()
-        reg_scheduler.step()
+        #reg_scheduler.step()
 
 
     best_model = get_model(args.model, args.train)(num_classes=source_train.dataset.num_class, num_domains=disc_dim, pretrained=False)
@@ -225,5 +225,5 @@ if __name__ == '__main__':
                 path, 'models',
                 "model_best.pt"), map_location=device))
     best_model = best_model.to(device)
-    test_acc = eval_model(best_model, reg_model, target_test, source_lbl_train, device, best_epoch, path+'/target_best.txt')
+    test_acc = eval_model(best_model, target_test, source_lbl_train, device, best_epoch, path+'/target_best.txt')
     print('Test Accuracy by the best model on the source domain is {} (at Epoch {})'.format(test_acc, best_epoch))

@@ -7,13 +7,13 @@ import random
 from torch.nn import MSELoss
 
 
-def eval_model(model,reg_model, eval_data, train_lbl_data, device, epoch, filename):
+def eval_model(model, eval_data, train_lbl_data, device, epoch, filename):
     criterion = nn.CrossEntropyLoss()
     reg_criterion = nn.BCEWithLogitsLoss()      # Loss function for Regressor
     sigmoid = nn.Sigmoid()
     softmax = nn.Softmax(dim = 1)
     model.eval()  # Set model to eval mode
-    reg_model.eval() # Set regressor model to eval mode
+    #reg_model.eval() # Set regressor model to eval mode
     running_loss = 0.0
     running_reg_loss = 0.0
     running_corrects = 0
@@ -29,9 +29,9 @@ def eval_model(model,reg_model, eval_data, train_lbl_data, device, epoch, filena
             inputs = inputs.to(device)
             labels = labels.to(device)
             # forward
-            outputs = model(inputs)
+            #outputs = model(inputs)
             # print("output is :", outputs)
-            lambda_predict = purity_predict(model, reg_model, inputs, train_lbl_data, outputs, device)
+            lambda_predict, loss, corrects = purity_predict(model, inputs, labels, criterion, train_lbl_data, outputs, device)
 
             #reg_values, reg_idx = torch.max(lambda_predict, 1)
             # lambda_predict_sftmax = softmax(lambda_predict)
@@ -43,18 +43,18 @@ def eval_model(model,reg_model, eval_data, train_lbl_data, device, epoch, filena
             lambda_predict_cls = torch.round(torch.sigmoid(values))
             #reg_eval_loss = long(reg_eval_loss)
             #reg_eval_loss = reg_criterion(reg_values, labels)
-            if isinstance(outputs, tuple):
-                outputs = outputs[0]
-            loss = criterion(outputs, labels)
-            _, preds = torch.max(outputs, 1)
+            # if isinstance(outputs, tuple):
+            #     outputs = outputs[0]
+            # loss = criterion(outputs, labels)
+            # _, preds = torch.max(outputs, 1)
             # print("classification pred:", preds)
             # print("lamda_cls_pred:", lamda_cls_pred)
             # statistics
-            running_loss += loss.item() * inputs.size(0)
+            running_loss += loss * inputs.size(0)
             #running_reg_loss += reg_eval_loss.item() * inputs.size(0)
             # for i in range(preds.shape[0]):
             # if lamda_cls_pred[i] == preds[i] and preds[i]==labels.data[i]:
-            running_corrects += torch.sum(preds == labels.data).item()
+            running_corrects += corrects
             running_reg_correct += torch.sum(values >= 0.75).item()       # Regression accuracy
             running_reg_class_correct += torch.sum(indexes == labels.data).item()   # Regression class accuracy
             # running_corrects+=1
@@ -93,7 +93,7 @@ def eval_model(model,reg_model, eval_data, train_lbl_data, device, epoch, filena
 
 
 "Novelty purity predictor---start"
-def purity_predict(model, reg_model, inputs, train_lbl_data, outputs, device):
+def purity_predict(model, inputs, labels, criterion, train_lbl_data, outputs, device):
 
     all_train_data = []
     all_target = []
@@ -118,6 +118,8 @@ def purity_predict(model, reg_model, inputs, train_lbl_data, outputs, device):
 #         #for cls in classes:
     lambda_predict = torch.zeros(0)
     lambda_predict=lambda_predict.to(device)
+    losses = 0
+    run_corrects = 0
     for cls in range(7):
         train_data_btch = []
         #indexes = [i for i, x in enumerate(all_target) if x==cls]
@@ -133,17 +135,29 @@ def purity_predict(model, reg_model, inputs, train_lbl_data, outputs, device):
         train_data_ldr0 = train_data_ldr0.to(device)
         #print("input size:{} train_Data_ldr0 size:{}".format(inputs.size(), train_data_ldr0.size()))
         mixup_ldr0 = 0.5 * inputs + 0.5 * train_data_ldr0
-        x1, x2 = model.features(inputs)
-        x3, x4 = model.features(mixup_ldr0)
-        mixup_eval_ftr_cat_ldr = torch.cat((x4, x2), 1)
+        # x1, x2 = model.features(inputs)
+        # x3, x4 = model.features(mixup_ldr0)
+        # mixup_eval_ftr_cat_ldr = torch.cat((x4, x2), 1)
         #mixup_eval_dlr_cat = torch.cat((mixup_ldr0, inputs), 1)
-        mixup_eval_ftr_cat_ldr = mixup_eval_ftr_cat_ldr.to(device)
+        #mixup_eval_ftr_cat_ldr = mixup_eval_ftr_cat_ldr.to(device)
         #print("mixup_eval_dlr_cat size is:", mixup_eval_dlr_cat.size())
-        lambda_predict0 = reg_model(mixup_eval_ftr_cat_ldr)
+        outputs = model(inputs, mixup_ldr0)
+
+        lambda_predict0 = outputs[2]
+        if isinstance(outputs, tuple):
+            outputs = outputs[0]
+        loss = criterion(outputs, labels)
+        _, preds = torch.max(outputs, 1)
+        run_corrects += torch.sum(preds == labels.data).item()
+        losses += loss.item()
+
+        #_, preds = torch.max(outputs, 1)
         #lambda_predict0_cls = torch.round(torch.sigmoid(lambda_predict0))
         lambda_predict0=lambda_predict0.reshape(lambda_predict0.size(0), 1)
         lambda_predict = torch.cat((lambda_predict, lambda_predict0), 1)
-    return lambda_predict
+    loss_avg = losses/7
+    corrects_avg = run_corrects/7
+    return lambda_predict, loss_avg, corrects_avg
     #print("all 7 lambda predicted are:", lambda_predict)
 #
 #
