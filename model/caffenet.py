@@ -42,18 +42,18 @@ class AlexNetCaffe(nn.Module):
 
 
         self.class_classifier = nn.Linear(4096, num_classes)
-
+        self.purity_pred = nn.Linear(8192, 1)
 
 
 
     def forward(self, x, lambda_val=0):
         x = self.features(x*57.6)
         #57.6 is the magic number needed to bring torch data back to the range of caffe data, based on used std
-        x = x1 =  x.view(x.size(0), -1)
+        x =  x.view(x.size(0), -1)
         x = self.classifier(x)
 
 
-        return self.class_classifier(x), y
+        return self.class_classifier(x)
 
 def caffenet(num_classes, num_domains=None, pretrained=True):
     model = AlexNetCaffe(num_classes)
@@ -75,21 +75,22 @@ class DGcaffenet(nn.Module):
         self.num_domains = num_domains
         self.base_model = caffenet(num_classes, pretrained=pretrained)
         self.discriminator = Discriminator([4096, 1024, 1024, num_domains], grl=grl, reverse=True)
-        self.purity_pred = nn.Linear(4096, 1)
+
         
     def forward(self, x, x_str):
         x = self.base_model.features(x*57.6)
         x_str = self.base_model.features(x_str*57.6)
+
         #rint("x size is:", x.size())
         x = x.view(x.size(0), 256 * 6 * 6)
         x_str = x_str.view(x_str.size(0), 256 * 6 * 6)
         x  = self.base_model.classifier(x)
         x_str = self.base_model.classifier(x_str)
         output_class = self.base_model.class_classifier(x)
-        x_x_str_mix = torch.cat((x, x_str), 1)
+        x_x_str_mix = torch.cat((x, x_str),1)
+        #print('x_x_str_mix size:', x_x_str_mix.size())
         output_domain = self.discriminator(x)
-
-        y = self.purity_pred(x_x_str_mix)
+        y = self.base_model.purity_pred(x_x_str_mix)
 
         return output_class, output_domain, y
 

@@ -131,7 +131,7 @@ if __name__ == '__main__':
         # reg_scheduler = get_scheduler('multistep')(optimizer=reg_optimizers, milestones=[60, 90, 150, 200],
         #                                            gamma=0.1)
     elif args.scheduler == 'multistep':
-        schedulers = [get_scheduler(args.scheduler)(optimizer=opt, milestones =[150, 280], gamma=args.lr_decay_gamma)
+        schedulers = [get_scheduler(args.scheduler)(optimizer=opt, milestones =[25, 280], gamma=args.lr_decay_gamma)
                      for opt in optimizers]
         # reg_scheduler = get_scheduler('multistep')(optimizer=reg_optimizers, milestones=[ 100, 180], gamma=0.1)
         # print('multistep scheduler is used')

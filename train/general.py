@@ -58,10 +58,10 @@ def train(model, source_train, optimizers,
 
         for optimizer in optimizers:
             optimizer.zero_grad()
-        reg_optimizers.zero_grad()
+        #reg_optimizers.zero_grad()
 
         # forward - do pseudo labelling part here
-        pred_weak_aug, output_domain = model(input_weak)
+        pred_weak_aug, output_domain,_ = model(input_weak, input_std)
         #pred_strong_aug, output_domain = model(input_strong)
 
         prob_weak_aug = F.softmax(pred_weak_aug, dim=1)
@@ -357,12 +357,12 @@ def mixup(device, input_strong_ldr, input_clss_lbl, unlbl_domains, alpha_mixup, 
         same_cls_mix_len = int(len(clss_wise_idx) / 2)
         clss_wise_first_hlf_idx = clss_wise_idx[:same_cls_mix_len]
         clss_wise_secnd_hlf_idx = clss_wise_idx[same_cls_mix_len:]
-        #print('clss_wise_secnd_hlf_idx before permute:', clss_wise_secnd_hlf_idx)
+        #print('clss_wise_secnd_hlf_idx len:', len(clss_wise_secnd_hlf_idx))
         clss_wise_first_hlf_idx_permute = random.sample(clss_wise_first_hlf_idx, len(clss_wise_first_hlf_idx))
         clss_wise_scnd_hlf_idx_permute = random.sample(remained_diff_clss_idx, len(clss_wise_secnd_hlf_idx))
         used_idx.extend(clss_wise_scnd_hlf_idx_permute)
         #print('used_idx:', used_idx)
-        #print('clss_wise_scnd_hlf_idx_permute after permute:', clss_wise_scnd_hlf_idx_permute)
+        #print('remained_diff_clss_idx len:', len(remained_diff_clss_idx))
         "Same class shuffling"
         input_clss_lbl_permute[clss_wise_first_hlf_idx] = input_clss_lbl_permute[clss_wise_first_hlf_idx_permute]
         unlbl_domains_permute[clss_wise_first_hlf_idx] = unlbl_domains_permute[clss_wise_first_hlf_idx_permute]
