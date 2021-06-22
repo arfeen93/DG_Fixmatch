@@ -208,6 +208,18 @@ class Train_val_data(DG_Dataset):
         #print("outputdata:", tuple(output_data))
         return  tuple(output_data)
 
+    def set_cluster_index(self, cluster_list):
+        if len(cluster_list) != len(self.images):
+            raise ValueError("The length of cluster_list must to be same as self.images")
+        else:
+            self.cluster_lbl = cluster_list
+
+    def set_domain_index(self, domain_list):
+        if len(domain_list) != len(self.images):
+            raise ValueError("The length of domain_list must to be same as self.images")
+        else:
+            self.domains_lbl = domain_list
+
     def dataload(self):
         image = [s[0] for s in self.total_samples]
         self.images = [image[idx] for idx in self.indexes]

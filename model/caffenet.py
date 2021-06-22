@@ -42,7 +42,19 @@ class AlexNetCaffe(nn.Module):
 
 
         self.class_classifier = nn.Linear(4096, num_classes)
-        self.purity_pred = nn.Linear(8192, 1)
+        #self.purity_pred = nn.Linear(8192,1)
+        self.purity_pred = nn.Sequential(OrderedDict([
+            ("fc8", nn.Linear(8192, 4096)),
+            ("relu8", nn.ReLU(inplace=True)),
+            ("drop8", nn.Dropout() if dropout else Id()),
+            ("fc9", nn.Linear(4096, 1024)),
+            ("relu9", nn.ReLU(inplace=True)),
+            ("drop9", nn.Dropout() if dropout else Id()),
+            ("fc10", nn.Linear(1024, 1))]))      # <------ Last expt had this this point saved as reg_demo_top3clss.out in script folder
+            # ("fc10", nn.Linear(1024, 256)),
+            # ("relu10", nn.ReLU(inplace=True)),
+            # ("drop10", nn.Dropout() if dropout else Id()),
+            # ("fc11", nn.Linear(256, 1))]))
 
 
 

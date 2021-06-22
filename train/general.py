@@ -161,10 +161,10 @@ def train(model, source_train, optimizers,
         # abs_reg_loss = torch.abs(lamdba_gt - lambda_pred)
         # rel_reg_loss_ratio = torch.div(abs_reg_loss, lamdba_gt)
         # "--------End"
-        if (epoch+1)%10==0:
-            if batch_idx==2 or batch_idx==5:
-                print("lambda ground truth is :", lamdba_gt)
-                print("training lambda predicted class is :", lambda_pred_cls)
+        # if (epoch+1)%10==0:
+        #     if batch_idx==2 or batch_idx==5:
+        #         print("lambda ground truth is :", lamdba_gt)
+        #         print("training lambda predicted class is :", lambda_pred_cls)
 
         "Novelty Regressor loss--start"
         reg_loss = reg_criterion(lambda_pred, lamdba_gt)

@@ -5,6 +5,7 @@ import torch.nn.functional as F
 from numpy.random import *
 import random
 from torch.nn import MSELoss
+import numpy as np
 
 
 def eval_model(model, eval_data, train_lbl_data, device, epoch, filename):
@@ -47,10 +48,9 @@ def eval_model(model, eval_data, train_lbl_data, device, epoch, filename):
             #         print('lambda_pred sigmoid for eval:', lambda_predict_sigmoid)
             values, indexes = torch.max(lambda_predict_sigmoid, 1)
             indexes = indexes.long()
-            lambda_predict_cls = top3_class.gather(1, indexes.view(-1,1))
             #print("labels shape :", labels.shape)
+            lambda_predict_cls = top3_class.gather(1, indexes.view(-1,1))
             #print("lambda_predict_cls shape :", lambda_predict_cls.shape)
-            running_reg_correct += torch.sum(values >= 0.8).item()       # Regression accuracy
             running_reg_class_correct += torch.sum(lambda_predict_cls == labels.data).item()   # Regression class accuracy
             data_num += inputs.size(0)
 
@@ -71,8 +71,8 @@ def eval_model(model, eval_data, train_lbl_data, device, epoch, filename):
     log = 'Eval: Epoch: {} Loss: {:.4f} Class Acc. : {:.4f}  ' \
         .format(epoch, epoch_loss,
                 epoch_acc)
-    regression_log = 'Eval: Epoch: {} Reg Acc : {:.4f} Reg Class Acc. : {:.4f}  ' \
-        .format(epoch, epoch_reg_Acc, epoch_reg_class_Acc)
+    regression_log = 'Eval: Epoch: {} Reg Class Acc. : {:.4f}  ' \
+        .format(epoch, epoch_reg_class_Acc)
     print(log)
     print(regression_log)
     with open(filename, 'a') as f:
@@ -102,22 +102,32 @@ def purity_predict(model, inputs, labels, outputs, criterion, train_lbl_data, de
     #print("shape of all_train_data:", len(all_train_data))
     lambda_predict = torch.zeros(0)
     lambda_predict = lambda_predict.to(device)
-
+    "Eval for regrression for top3 classes only"
     for k in range(top3_class.shape[1]):
         train_data_btch = []
         classes = top3_class[:,k]
         #print('shape of classes in eval:', classes.shape)
         for j in classes:
-            indexes = [i for i, x in enumerate(all_target) if x == j]
-            indx = random.choice(indexes)
+            #train_data = torch.zeros(all_train_data[0].shape)
+            index = [i for i, x in enumerate(all_target) if x == j]
+            # for j in indexes:
+            #     train_data = train_data+all_train_data[j]
+            # train_data = train_data/len(indexes)
+            indx = random.choice(index)
             train_data_btch.append(all_train_data[indx])
+            #train_data_btch.append(train_data)
         train_data_btch0 = train_data_btch
         train_data_ldr0 = torch.stack(train_data_btch0)
         train_data_ldr0 = train_data_ldr0.to(device)
         # print("input size:{} train_Data_ldr0 size:{}".format(inputs.size(), train_data_ldr0.size()))
+        # RG = np.random.default_rng()
+        # lam_batch = torch.from_numpy(RG.beta(0.3, 0.3, size=labels.size(0))).float()
+        # lam_batch_unsqeeze = lam_batch.unsqueeze(-1).unsqueeze(-1).unsqueeze(-1)
+        # lam_batch_unsqeeze = lam_batch_unsqeeze.to(device)
         mixup_ldr0 = 0.5 * inputs + 0.5 * train_data_ldr0
+        #mixup_ldr0 = lam_batch_unsqeeze * inputs + (1 - lam_batch_unsqeeze) * train_data_ldr0
 
-        outputs = model(inputs, mixup_ldr0)
+        outputs = model(mixup_ldr0, inputs)
 
         lambda_predict0 = outputs[2]
         lambda_predict0 = lambda_predict0.reshape(lambda_predict0.size(0), 1)

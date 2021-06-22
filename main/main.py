@@ -157,7 +157,7 @@ if __name__ == '__main__':
 
         dataset = source_train.dataset
         #dataset = deepcopy(source)
-        print("vnf:", (dataset.clusters))
+        #print("vnf:", (dataset.cluster_lbl))
         if args.clustering:
             if epoch % args.clustering_step == 0:
                 pseudo_domain_label = domain_split(dataset, model, device=device,
@@ -166,16 +166,17 @@ if __name__ == '__main__':
                                                        nmb_cluster=args.num_clustering, method=args.clustering_method,
                                                        pca_dim=256, whitening=False, L2norm=False,
                                                        instance_stat=args.instance_stat)
-                dataset.set_cluster(np.array(pseudo_domain_label))
+                #dataset.set_cluster(np.array(pseudo_domain_label))
+                dataset.set_cluster_index(np.array(pseudo_domain_label))
 
         if args.loss_disc_weight:
             if args.clustering:
-                hist = dataset.clusters
+                hist = dataset.cluster_lbl
 
             else:
-                hist = dataset.domains
+                hist = dataset.domains_lbl
 
-
+            #print("np.histogram(hist, bins=model.num_domains)[0]:", np.histogram(hist, bins=model.num_domains)[0])
             weight = 1. / np.histogram(hist, bins=model.num_domains)[0]
             weight = weight / weight.sum() * model.num_domains
             weight = torch.from_numpy(weight).float().to(device)

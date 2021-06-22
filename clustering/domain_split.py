@@ -94,7 +94,7 @@ def domain_split(dataset, model, device, cluster_before, filename, epoch, nmb_cl
 
     clustering_loss = cluster_method.cluster(features, verbose=False)
     cluster_list = arrange_clustering(cluster_method.images_lists)
-    print("cluster_list len :", len(cluster_list))
+    #print("cluster_list len :", len(cluster_list))
     # print("dataloader.dataset len :", len(dataset))
     # print("dataloader.dataset.labels len :", len(dataloader.dataset.clss))
 
@@ -106,7 +106,7 @@ def domain_split(dataset, model, device, cluster_before, filename, epoch, nmb_cl
 
     before_nmi = normalized_mutual_info_score(
         cluster_list, cluster_before, average_method='arithmetic')
-    print("before_nmi:", before_nmi)
+    #print("before_nmi:", before_nmi)
 
     log = 'Epoch: {}, NMI against class labels: {:.3f}, domain labels: {:.3f}, previous assignment: {:.3f}'.format(epoch, class_nmi, domain_nmi, before_nmi)
     print(log)
