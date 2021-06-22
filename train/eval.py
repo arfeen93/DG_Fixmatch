@@ -10,26 +10,26 @@ import numpy as np
 
 def eval_model(model, eval_data, train_lbl_data, device, epoch, filename):
     criterion = nn.CrossEntropyLoss()
-    reg_criterion = nn.BCEWithLogitsLoss()      # Loss function for Regressor
+    #reg_criterion = nn.BCEWithLogitsLoss()      # Loss function for Regressor
     sigmoid = nn.Sigmoid()
-    softmax = nn.Softmax(dim = 1)
+    #softmax = nn.Softmax(dim = 1)
     model.eval()  # Set model to eval mode
     #reg_model.eval() # Set regressor model to eval mode
     running_loss = 0.0
-    running_reg_loss = 0.0
     running_corrects = 0
-    running_reg_correct = 0
+    #running_reg_correct = 0
     running_reg_class_correct = 0
     # Iterate over data.
-    data_num = 0
-    idx = 0
+    #data_num = 0
+
     for inputs, labels in eval_data:
-        idx+=1
+
         with torch.no_grad():
 
             inputs = inputs.to(device)
             labels = labels.to(device)
             # forward
+            "classification loss and acc"
             outputs = model(inputs, inputs)
             if isinstance(outputs, tuple):
                 output_score = outputs[0]
@@ -38,6 +38,7 @@ def eval_model(model, eval_data, train_lbl_data, device, epoch, filename):
             running_corrects += torch.sum(preds == labels.data).item()
             running_loss += loss * inputs.size(0)
             # print("output is :", outputs)
+            "regressor loss and acuracy"
             lambda_predict, top3_class = purity_predict(model, inputs, labels, outputs, criterion, train_lbl_data, device)
 
             #reg_values, reg_idx = torch.max(lambda_predict, 1)
@@ -52,16 +53,10 @@ def eval_model(model, eval_data, train_lbl_data, device, epoch, filename):
             lambda_predict_cls = top3_class.gather(1, indexes.view(-1,1))
             #print("lambda_predict_cls shape :", lambda_predict_cls.shape)
             running_reg_class_correct += torch.sum(lambda_predict_cls == labels.data).item()   # Regression class accuracy
-            data_num += inputs.size(0)
 
     epoch_loss = running_loss / len(eval_data.dataset)
     epoch_acc = running_corrects / len(eval_data.dataset)
-    epoch_reg_Acc = running_reg_correct/len(eval_data.dataset)
-    #epoch_reg_eval_loss = running_reg_loss/ len(eval_data.dataset)
     epoch_reg_class_Acc = running_reg_class_correct / len(eval_data.dataset)
-    # epoch_lam_orig_acc = running_corrects_lam_orig / len(eval_data.dataset)
-    # epoch_lam_or_pred_orig_acc = running_corrects_new/len(eval_data.dataset)
-    # epoch_pred_orig_acc = running_corrects_pred_orig/len(eval_data.dataset)
 
     # if (epoch+1) % 20 == 0:
     #     print("lambda predicted is :", lambda_predict)
@@ -77,7 +72,7 @@ def eval_model(model, eval_data, train_lbl_data, device, epoch, filename):
     print(regression_log)
     with open(filename, 'a') as f:
         f.write(log + '\n')
-    return epoch_acc
+    return epoch_acc, epoch_reg_class_Acc
 
 
 "Novelty purity predictor---start"
@@ -85,16 +80,18 @@ def purity_predict(model, inputs, labels, outputs, criterion, train_lbl_data, de
 
     all_train_data = []
     all_target = []
+    all_train_dom = []
 
-
-    #print("regression model is :", reg_model)
-    for input_x, target_x in train_lbl_data:
+    for input_x, target_x,dom in train_lbl_data:
         train_in = input_x
         all_train_data.append(train_in)
         all_target.append(target_x)
+        all_train_dom.append(dom)
 
 
     outputs_cls=outputs[0]
+    #outputs_dom = outputs[1]
+    #_, preds_dom = torch.max(outputs_dom, 1)
     top3_logit = torch.topk(outputs_cls, 3)
     #print('top3_logit:', top3_logit)
     top3_class = top3_logit[1]
@@ -104,38 +101,64 @@ def purity_predict(model, inputs, labels, outputs, criterion, train_lbl_data, de
     lambda_predict = lambda_predict.to(device)
     "Eval for regrression for top3 classes only"
     for k in range(top3_class.shape[1]):
-        train_data_btch = []
+        train_data_btch1 = []
+        train_data_btch2 = []
+        train_data_btch3 = []
         classes = top3_class[:,k]
         #print('shape of classes in eval:', classes.shape)
         for j in classes:
             #train_data = torch.zeros(all_train_data[0].shape)
             index = [i for i, x in enumerate(all_target) if x == j]
-            # for j in indexes:
-            #     train_data = train_data+all_train_data[j]
-            # train_data = train_data/len(indexes)
-            indx = random.choice(index)
-            train_data_btch.append(all_train_data[indx])
-            #train_data_btch.append(train_data)
-        train_data_btch0 = train_data_btch
-        train_data_ldr0 = torch.stack(train_data_btch0)
+            #print("index:", index)
+            #indx = random.choice(index)
+            sample_indexes = random.sample(index, 3)
+            train_data_btch1.append(all_train_data[sample_indexes[0]])
+            train_data_btch2.append(all_train_data[sample_indexes[1]])
+            train_data_btch3.append(all_train_data[sample_indexes[2]])
+            #train_data_btch.append(all_train_data[indx])
+        #train_data_btch1 = train_data_btch
+        train_data_ldr0 = torch.stack(train_data_btch1)
         train_data_ldr0 = train_data_ldr0.to(device)
+
+        train_data_ldr1 = torch.stack(train_data_btch2)
+        train_data_ldr1 = train_data_ldr1.to(device)
+
+        train_data_ldr2 = torch.stack(train_data_btch3)
+        train_data_ldr2 = train_data_ldr2.to(device)
         # print("input size:{} train_Data_ldr0 size:{}".format(inputs.size(), train_data_ldr0.size()))
         # RG = np.random.default_rng()
         # lam_batch = torch.from_numpy(RG.beta(0.3, 0.3, size=labels.size(0))).float()
         # lam_batch_unsqeeze = lam_batch.unsqueeze(-1).unsqueeze(-1).unsqueeze(-1)
         # lam_batch_unsqeeze = lam_batch_unsqeeze.to(device)
+        #mixup_ldr0 = 0.5 * inputs + 0.5 * train_data_ldr0
         mixup_ldr0 = 0.5 * inputs + 0.5 * train_data_ldr0
-        #mixup_ldr0 = lam_batch_unsqeeze * inputs + (1 - lam_batch_unsqeeze) * train_data_ldr0
+        mixup_ldr1 = 0.5 * inputs + 0.5 * train_data_ldr1
+        mixup_ldr2 = 0.5 * inputs + 0.5 * train_data_ldr2
 
-        outputs = model(mixup_ldr0, inputs)
+        #outputs = model(mixup_ldr0, inputs)
+        outputs0 = model(mixup_ldr0, inputs)
+        outputs1 = model(mixup_ldr1, inputs)
+        outputs2 = model(mixup_ldr2, inputs)
 
-        lambda_predict0 = outputs[2]
+        # lambda_predict0 = outputs[2]
+        # lambda_predict0 = lambda_predict0.reshape(lambda_predict0.size(0), 1)
+        # lambda_predict = torch.cat((lambda_predict, lambda_predict0), 1)
+
+        lambda_predict0 = outputs0[2]
         lambda_predict0 = lambda_predict0.reshape(lambda_predict0.size(0), 1)
-        lambda_predict = torch.cat((lambda_predict, lambda_predict0), 1)
+
+        lambda_predict1 = outputs1[2]
+        lambda_predict1 = lambda_predict0.reshape(lambda_predict1.size(0), 1)
+
+        lambda_predict2 = outputs2[2]
+        lambda_predict2 = lambda_predict2.reshape(lambda_predict2.size(0), 1)
+
+        lambda_predict_avg = (lambda_predict0 + lambda_predict1 + lambda_predict2)/3
+        lambda_predict = torch.cat((lambda_predict, lambda_predict_avg), 1)
 
     return lambda_predict, top3_class
 
-    "Eval for regrression for all classes"
+"Eval for regrression for all classes"
     # lambda_predict = torch.zeros(0)
     # lambda_predict=lambda_predict.to(device)
     # losses = 0

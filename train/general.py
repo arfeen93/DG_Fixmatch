@@ -117,6 +117,7 @@ def train(model, source_train, optimizers,
 
         "Unlabelled data model output---start"
         mixedup_output, mixup_output_domain, lambda_pred = model(mixedup, input_strong)
+        #print("lkbvnv:", mixup_output_domain)
         "Unlabelled data model output---end"
         "Novelty Regressor model data passing--start"
         #x, x1 = model.features(mixedup)

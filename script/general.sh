@@ -2,7 +2,7 @@
 
 domain=("photo" "art" "cartoon" "sketch")
 
-times=1
+times=5
 for i in `seq 1 $times`
 do
   max=$((${#domain[@]}-1))

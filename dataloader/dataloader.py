@@ -40,6 +40,8 @@ def random_split_dataloader(data, data_root, source_domain, target_domain, batch
     source_train.set_transform('randaugment')
     source_train.get_domain_label = get_domain_label
     source_train.get_cluster = get_cluster
+    source_lbl_train.get_domain_label=get_domain_label
+    source_lbl_train.get_cluster=get_cluster
 
     source_val = Train_val_data(val_indices, root_dir=data_root, domain=source_domain, split='val')
     # source_val.split='randaugment'

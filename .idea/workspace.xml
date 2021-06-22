@@ -15,7 +15,7 @@
     </option>
   </component>
   <component name="Git.Settings">
-    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$/train" />
+    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
   </component>
   <component name="JupyterTrust" id="532f4f29-671a-49d3-8c9a-d23156d4a15d" />
   <component name="ProjectId" id="1mFDxXpjqpcoOqkQkpW8Csgnl1z" />
@@ -103,7 +103,7 @@
       <workItem from="1622532492855" duration="120628000" />
       <workItem from="1623343113865" duration="53123000" />
       <workItem from="1624113165725" duration="38494000" />
-      <workItem from="1624223798039" duration="39871000" />
+      <workItem from="1624223798039" duration="60826000" />
     </task>
     <servers />
   </component>
@@ -139,10 +139,11 @@
       <screen x="0" y="0" width="1536" height="824" />
     </state>
     <state x="277" y="57" key="SettingsEditor/0.0.1536.824@0.0.1536.824" timestamp="1622789840035" />
-    <state x="431" y="145" width="672" height="678" key="search.everywhere.popup" timestamp="1617541621458">
-      <screen x="0" y="0" width="1536" height="824" />
+    <state x="431" y="147" width="672" height="687" key="search.everywhere.popup" timestamp="1624373663438">
+      <screen x="0" y="0" width="1536" height="834" />
     </state>
     <state x="431" y="145" width="672" height="678" key="search.everywhere.popup/0.0.1536.824@0.0.1536.824" timestamp="1617541621458" />
+    <state x="431" y="147" width="672" height="687" key="search.everywhere.popup/0.0.1536.834@0.0.1536.834" timestamp="1624373663438" />
     <state x="538" y="280" key="webDeployment.PermissionsDialog" timestamp="1622811821054">
       <screen x="0" y="0" width="1536" height="824" />
     </state>

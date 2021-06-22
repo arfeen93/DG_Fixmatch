@@ -143,13 +143,7 @@ if __name__ == '__main__':
     best_epoch = 0
     best_reg_acc = 0
 
-    # if args.alpha_mixup > 0:
-    #     lam = np.random.beta(args.alpha_mixup, args.alpha_mixup)
-    # else:
-    #     lam = 1
-    #
-    # index = torch.randperm(args.batch_size)
-    
+    "Training the model"
     for epoch in range(num_epoch):
 
         print('Epoch: {}/{}, Lr: {:.6f}'.format(epoch, num_epoch-1, optimizers[0].param_groups[0]['lr']))
@@ -194,8 +188,8 @@ if __name__ == '__main__':
                                                   grl_weight=args.grl_weight, label_batch_size = args.labeled_batch_size)
 
         if epoch % args.eval_step == 0:
-            acc = eval_model(model, source_val, source_lbl_train, device, epoch, path+'/source_eval.txt')
-            acc_ = eval_model(model, target_test, source_lbl_train, device, epoch, path+'/target_test.txt')
+            acc, reg_acc = eval_model(model, source_val, source_lbl_train, device, epoch, path+'/source_eval.txt')
+            acc_, reg_acc_ = eval_model(model, target_test, source_lbl_train, device, epoch, path+'/target_test.txt')
 
         if epoch % args.save_step == 0:
             torch.save(model.state_dict(), os.path.join(
@@ -226,5 +220,5 @@ if __name__ == '__main__':
                 path, 'models',
                 "model_best.pt"), map_location=device))
     best_model = best_model.to(device)
-    test_acc = eval_model(best_model, target_test, source_lbl_train, device, best_epoch, path+'/target_best.txt')
-    print('Test Accuracy by the best model on the source domain is {} (at Epoch {})'.format(test_acc, best_epoch))
+    test_acc, test_reg_acc = eval_model(best_model, target_test, source_lbl_train, device, best_epoch, path+'/target_best.txt')
+    print('Test Accuracy by the best model on the source domain is {} Reg cls Acc:{} (at Epoch {})'.format(test_acc, test_reg_acc, best_epoch))
