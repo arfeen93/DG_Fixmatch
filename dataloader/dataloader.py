@@ -47,7 +47,7 @@ def random_split_dataloader(data, data_root, source_domain, target_domain, batch
     # source_val.split='randaugment'
     # source_val.set_transform('randaugment')
 
-    #print("source_lbl_train :", list(source_lbl_train))
+
     # trgt = []
     # for i, data in enumerate(source_val):
     #     sample_cls = list(source_val)[i][1]
@@ -122,6 +122,7 @@ def random_split_dataloader(data, data_root, source_domain, target_domain, batch
     #     save_image(make_grid(img_s[:128], nrow=16), "unlbld_data_strong_aug.png")
     #     break
     source_val  = DataLoader(source_val, batch_size=batch_size, shuffle=False, num_workers=num_workers)
+    #print("source_val dataloader len :", len(source_val))
     target_test = DataLoader(target_test, batch_size=batch_size, shuffle=False, num_workers=num_workers)
 
     return source_train, source_lbl_train, source_val, target_test #, train_val

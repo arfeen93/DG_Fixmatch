@@ -33,8 +33,8 @@ if __name__ == '__main__':
     parser.add_argument('--eval-step', type=int, default=1)
     parser.add_argument('--save-step', type=int, default=100)
     
-    parser.add_argument('--batch-size', type=int, default=128)
-    parser.add_argument('--labeled-batch-size', type=int, default=50, help='no of labelled sample in a batch')
+    parser.add_argument('--batch-size', type=int, default=128)  # batch size is 128 for Alexnet and 100 for resnet
+    parser.add_argument('--labeled-batch-size', type=int, default=50, help='no of labelled sample in a batch') #<---labeled-batch-size=50 for Alexnet and 40 for Resnet
     parser.add_argument('--scheduler', default='step')
     parser.add_argument('--lr', type=float, default=0.001)
     parser.add_argument('--lr-step', type=int, default=24)
@@ -100,7 +100,7 @@ if __name__ == '__main__':
     label_batch_size = args.labeled_batch_size
     
     disc_dim = get_disc_dim(args.train, args.clustering, len(source_domain), args.num_clustering)
-    
+    num_classes = source_train.dataset.num_class
     
     # print('no of class :',source_lbl_train_ldr.dataset.num_class)
     # model = get_model(args.model, args.train)(
@@ -114,7 +114,7 @@ if __name__ == '__main__':
     # reg_model = reg_model.to(device)
     #print('model is :', model)
     model_lr = get_model_lr(args.model, args.train, model,  fc_weight=args.fc_weight, disc_weight=args.disc_weight)
-    # print("model lr:", model_lr)
+    print("model lr:", model_lr)
     optimizers = [get_optimizer( model_part, args.lr * alpha, args.momentum, args.weight_decay,
                                 args.feature_fixed, args.nesterov, per_layer=False) for model_part, alpha in model_lr]
     # print("optimizers:", optimizers)
@@ -131,7 +131,7 @@ if __name__ == '__main__':
         # reg_scheduler = get_scheduler('multistep')(optimizer=reg_optimizers, milestones=[60, 90, 150, 200],
         #                                            gamma=0.1)
     elif args.scheduler == 'multistep':
-        schedulers = [get_scheduler(args.scheduler)(optimizer=opt, milestones =[25, 280], gamma=args.lr_decay_gamma)
+        schedulers = [get_scheduler(args.scheduler)(optimizer=opt, milestones =[ 50, 280], gamma=args.lr_decay_gamma) #<---milestone = 25  for caffenet and no lrstep for resnet
                      for opt in optimizers]
         # reg_scheduler = get_scheduler('multistep')(optimizer=reg_optimizers, milestones=[ 100, 180], gamma=0.1)
         # print('multistep scheduler is used')
@@ -212,7 +212,7 @@ if __name__ == '__main__':
         # print("Current reg model lr :", curr_reg_lr)
         for scheduler in schedulers:
             scheduler.step()
-        #reg_scheduler.step()
+
 
 
     best_model = get_model(args.model, args.train)(num_classes=source_train.dataset.num_class, num_domains=disc_dim, pretrained=False)

@@ -58,7 +58,7 @@ def train(model, source_train, optimizers,
 
         for optimizer in optimizers:
             optimizer.zero_grad()
-        #reg_optimizers.zero_grad()
+
 
         # forward - do pseudo labelling part here
         pred_weak_aug, output_domain,_ = model(input_weak, input_std)
@@ -83,7 +83,7 @@ def train(model, source_train, optimizers,
         lbl_target = target_x[:label_batch_size]
         unlbl_pseudo_labels_orig = pseudo_labels_orig[label_batch_size:]
         pseudo_labels_mixed = torch.cat((lbl_target, unlbl_pseudo_labels_orig), 0)
-        pseudo_labels = F.one_hot(pseudo_labels_mixed, num_classes=7)
+        pseudo_labels = F.one_hot(pseudo_labels_mixed, num_classes=5)
         mask_loss_lbl= [True for x in range(len(mask_loss)) if x<label_batch_size]
         mask_loss_lbl = torch.Tensor(mask_loss_lbl)
         mask_loss_lbl = mask_loss_lbl.to(device)
@@ -127,11 +127,10 @@ def train(model, source_train, optimizers,
         #mixup_unlbl_str_dlr_ftre_cat = torch.cat((x1, x3), 1)
         #mixup_unlbl_str_dlr_cat = torch.cat((mixedup, input_strong), 1)
         #lambda_pred = (mixup_unlbl_str_dlr_ftre_cat)
+        'reg model part'
         lambda_pred_cls = torch.round(torch.sigmoid(lambda_pred))
 
-        #lambda_pred_clss = torch.round(lambda_pred)
-        #prob_lambda_pred = F.softmax(lambda_pred, dim = 1)
-        #lambda_pred = reg_model(mixedup, input_strong)
+
         "Novelty Regressor model data passing--end"
         prob_mixup_output = F.softmax(mixedup_output, dim=1)
         prob_mixup_domain_output = F.softmax(mixup_output_domain, dim=1)
@@ -153,7 +152,7 @@ def train(model, source_train, optimizers,
         "Novelty regressor part---start"
         lamdba_gt = [1 if input_clss_lbl[k]==input_clss_lbl_idx[k] else 0 for k in range(len(input_clss_lbl))]
         # #lamdba_gt = [1 if input_clss_lbl_reg[k]==input_clss_lbl_idx_reg[k] else lam for k in range(len(input_clss_lbl_reg))]
-        #print('count of same clss mixup:', lamdba_gt.count(1))
+        #print('count of same clss mixup:', lamdba_gt.count())
         lamdba_gt = torch.Tensor(lamdba_gt)
         # #print("lambda_gt is:", lamdba_gt)
         lamdba_gt = lamdba_gt.reshape(lamdba_gt.shape[0], 1)
@@ -170,10 +169,6 @@ def train(model, source_train, optimizers,
         "Novelty Regressor loss--start"
         reg_loss = reg_criterion(lambda_pred, lamdba_gt)
         #lambda_correct = torch.max(lambda_pred, 1)
-        # mse_loss = MSELoss()  # noveltrain.out is without reduction="sum"
-        # reg_loss = mse_loss(lambda_pred, lamdba_gt)
-        # l1_loss = nn.L1Loss()
-        # reg_loss = l1_loss(lambda_pred, lamdba_gt)
 
         "Novelty Regressor loss---end"
 
@@ -184,8 +179,8 @@ def train(model, source_train, optimizers,
         mixup_domain_loss = mixup_dom_loss_orig + mixup_dom_loss_idx
         # mixup_cls_loss = (1 - lam) * class_criterion(mixedup_output, input_clss_lbl_idx) + lam * class_criterion(
         #    mixedup_output, input_clss_lbl)
-        input_clss_lbl_one_hot = F.one_hot(input_clss_lbl, num_classes=7)
-        input_clss_lbl_idx_one_hot = F.one_hot(input_clss_lbl_idx, num_classes=7)
+        input_clss_lbl_one_hot = F.one_hot(input_clss_lbl, num_classes=5)
+        input_clss_lbl_idx_one_hot = F.one_hot(input_clss_lbl_idx, num_classes=5)
 
         mixup_cls_loss_orig = -torch.mean((mask_loss_all.int() * lam) * torch.sum(input_clss_lbl_one_hot * (torch.log(prob_mixup_output + 1e-5)), 1))
         mixup_cls_loss_idx = -torch.mean((mask_loss_all_idx.int() * (1 - lam)) * torch.sum(input_clss_lbl_idx_one_hot * (torch.log(prob_mixup_output + 1e-5)), 1))
@@ -227,7 +222,6 @@ def train(model, source_train, optimizers,
         total_loss.backward()
         for optimizer in optimizers:
             optimizer.step()
-        #reg_optimizers.step()
 
         # running_loss_class += loss_class.item() * inputs.size(0)
         running_loss_class += loss_class.item()
@@ -241,13 +235,12 @@ def train(model, source_train, optimizers,
         running_correct_class += total_correct_class
         running_reg_correct_class += total_reg_correct_class
         running_loss_domain += loss_domain.item()
-        # running_loss_domain += loss_domain.item()
         total_correct_domain = torch.sum(lam * (pred_domain==unlbl_dom.data)) + \
                                torch.sum((1 - lam) * (pred_domain==unlbl_dom_idx.data))
         running_correct_domain += total_correct_domain
         running_loss_entropy += loss_entropy.item()
         running_loss_total += total_loss.item()
-        running_reg_loss +=  reg_loss.item()
+        running_reg_loss += reg_loss.item()
         batch_samples +=  mixedup.size(0)
 
 
@@ -346,12 +339,13 @@ def mixup(device, input_strong_ldr, input_clss_lbl, unlbl_domains, alpha_mixup, 
     input_strong_ldr_permute = deepcopy(input_strong_ldr)
     mask_loss_all_permute = deepcopy(mask_loss_all)
     used_idx = []
-    for j in range(7):
+    for j in range(5):
         clss_wise_idx = [i for i,x in enumerate(input_clss_lbl) if x==j]
         diff_clss_idx = [i for i,x in enumerate(input_clss_lbl) if x!=j]
         remained_diff_clss_idx = [idx for idx in diff_clss_idx if idx not in used_idx]
         #print('diff_clss_idx len:', len(diff_clss_idx))
 
+        #print('remained_diff_clss_idx len:', len(remained_diff_clss_idx))
         # sorting both the lists
         #print('clss_wise_idx:', clss_wise_idx)
         #print('diff_clss_idx:', diff_clss_idx)
@@ -359,11 +353,18 @@ def mixup(device, input_strong_ldr, input_clss_lbl, unlbl_domains, alpha_mixup, 
         clss_wise_first_hlf_idx = clss_wise_idx[:same_cls_mix_len]
         clss_wise_secnd_hlf_idx = clss_wise_idx[same_cls_mix_len:]
         #print('clss_wise_secnd_hlf_idx len:', len(clss_wise_secnd_hlf_idx))
+        #print('remained_diff_clss_idx len:', len(remained_diff_clss_idx))
+        #print('used_idx len:', len(used_idx))
         clss_wise_first_hlf_idx_permute = random.sample(clss_wise_first_hlf_idx, len(clss_wise_first_hlf_idx))
+        #remained_diff_clss_idx = [idx for idx in diff_clss_idx if idx not in clss_wise_first_hlf_idx_permute]
+        # if len(remained_diff_clss_idx) <= len(clss_wise_secnd_hlf_idx):
+        #     diff = len(clss_wise_secnd_hlf_idx) - len(remained_diff_clss_idx)
+        #     clss_wise_scnd_hlf_idx_permute = random.sample(remained_diff_clss_idx, len(clss_wise_secnd_hlf_idx)-(diff+1))
+        # else:
         clss_wise_scnd_hlf_idx_permute = random.sample(remained_diff_clss_idx, len(clss_wise_secnd_hlf_idx))
         used_idx.extend(clss_wise_scnd_hlf_idx_permute)
-        #print('used_idx:', used_idx)
-        #print('remained_diff_clss_idx len:', len(remained_diff_clss_idx))
+        #used_idx = clss_wise_scnd_hlf_idx_permute
+
         "Same class shuffling"
         input_clss_lbl_permute[clss_wise_first_hlf_idx] = input_clss_lbl_permute[clss_wise_first_hlf_idx_permute]
         unlbl_domains_permute[clss_wise_first_hlf_idx] = unlbl_domains_permute[clss_wise_first_hlf_idx_permute]

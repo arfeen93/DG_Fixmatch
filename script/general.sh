@@ -1,8 +1,8 @@
 #!/bin/bash
 
-domain=("photo" "art" "cartoon" "sketch")
-
-times=5
+#domain=("photo" "art" "cartoon" "sketch")
+domain=('Caltech' 'Labelme' 'Pascal' 'Sun')
+times=1
 for i in `seq 1 $times`
 do
   max=$((${#domain[@]}-1))
@@ -16,14 +16,14 @@ do
 
         do
 
-          dir_name="PACS/default/${domain[0]}${i}"
+          dir_name="VLCS/caffenet/150labelledsamples/${domain[0]}${i}"
           echo $dir_name
           python ../main/main.py \
-            --data-root='/home/arfeen/papers_code/dom_gen_aaai_2020/PACS/kfold/' \
+            --data-root='/home/arfeen/papers_code/dom_gen_aaai_2020/VLCS/' \
             --save-root='/home/arfeen/papers_code/dom_gen_aaai_2020/' \
             --result-dir=$dir_name \
             --train='general' \
-            --data='PACS' \
+            --data='VLCS' \
             --model='caffenet' \
             --clustering \
             --clustering-method='Kmeans' \
@@ -34,7 +34,7 @@ do
             --gpu=1 \
             --num-epoch=$epoch_num \
             --scheduler='multistep' \
-            --lr=0.001 \
+            --lr=0.0001 \
             --lr-step=$lr_step \
             --lr-decay-gamma=0.1 \
             --nesterov \
